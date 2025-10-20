@@ -298,6 +298,10 @@ def load_command_table(self, _):
         g.custom_command('update', 'aks_approuting_zone_update')
         g.custom_command('list', 'aks_approuting_zone_list')
 
+    # AKS network diagnostics command
+    with self.command_group('aks', managed_clusters_sdk, client_factory=cf_managed_clusters) as g:
+        g.custom_command('net-diagnostics', 'aks_net_diagnostics')
+
     with self.command_group('aks safeguards'):
         from .custom import AKSSafeguardsShowCustom as Show
         from .custom import AKSSafeguardsCreateCustom as Create
