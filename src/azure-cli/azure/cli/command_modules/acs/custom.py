@@ -3797,9 +3797,12 @@ def aks_net_diagnostics(
     """
     from azure.cli.command_modules.acs._client_factory import (
         get_network_client,
-        get_privatedns_client
+        get_privatedns_client,
+        get_compute_client
     )
     from azure.cli.core.commands.client_factory import get_subscription_id
+    from azure.cli.command_modules.acs.net_diagnostics import run_diagnostics
+    import logging
 
     # Get cluster information
     mc = client.get(resource_group_name, name)
@@ -3807,30 +3810,31 @@ def aks_net_diagnostics(
     if not mc:
         raise CLIError(f"Cluster '{name}' not found in resource group '{resource_group_name}'")
 
-    # Get subscription ID from cluster resource ID
+    # Get subscription ID from CLI context
     subscription_id = get_subscription_id(cmd.cli_ctx)
 
     # Create Azure SDK clients using CLI authentication
-    # These will be used in Phase 3.4 when orchestrator is integrated
     network_client = get_network_client(cmd.cli_ctx, subscription_id)
     privatedns_client = get_privatedns_client(cmd.cli_ctx, subscription_id)
+    compute_client = get_compute_client(cmd.cli_ctx)
 
-    # TODO Phase 3.4: Import and call the orchestrator from aks-net-diagnostics
-    # For now, return basic cluster info as POC
-    result = {
-        "cluster_name": mc.name,
-        "resource_group": resource_group_name,
-        "location": mc.location,
-        "kubernetes_version": mc.kubernetes_version,
-        "provisioning_state": mc.provisioning_state,
-        "network_profile": {
-            "network_plugin": mc.network_profile.network_plugin if mc.network_profile else None,
-            "service_cidr": mc.network_profile.service_cidr if mc.network_profile else None,
-            "dns_service_ip": mc.network_profile.dns_service_ip if mc.network_profile else None,
-        },
-        "status": "POC - Basic cluster info retrieved successfully",
-        "message": "Phase 3.3 complete: Command handler created. Phase 3.4 will integrate full diagnostics."
-    }
+    # Setup logger for diagnostics
+    logger = logging.getLogger("aks_net_diagnostics")
+
+    # Run orchestrator with CLI-authenticated clients
+    result = run_diagnostics(
+        aks_client=client,
+        network_client=network_client,
+        compute_client=compute_client,
+        privatedns_client=privatedns_client,
+        resource_group_name=resource_group_name,
+        cluster_name=name,
+        subscription_id=subscription_id,
+        details=details,
+        probe_test=probe_test,
+        json_report=json_report,
+        logger=logger
+    )
 
     if json_report:
         return result
