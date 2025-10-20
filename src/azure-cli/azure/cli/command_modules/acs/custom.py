@@ -3800,7 +3800,6 @@ def aks_net_diagnostics(
         get_privatedns_client,
         get_compute_client
     )
-    from azure.cli.core.commands.client_factory import get_subscription_id
     from azure.cli.command_modules.acs.net_diagnostics import run_diagnostics
     import logging
 
@@ -3819,7 +3818,7 @@ def aks_net_diagnostics(
     compute_client = get_compute_client(cmd.cli_ctx)
 
     # Setup logger for diagnostics
-    logger = logging.getLogger("aks_net_diagnostics")
+    diagnostics_logger = logging.getLogger("aks_net_diagnostics")
 
     # Run orchestrator with CLI-authenticated clients
     result = run_diagnostics(
@@ -3833,7 +3832,7 @@ def aks_net_diagnostics(
         details=details,
         probe_test=probe_test,
         json_report=json_report,
-        logger=logger
+        logger=diagnostics_logger
     )
 
     if json_report:
