@@ -34,6 +34,25 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 - **Uses:** Azure CLI command framework
 - **Dependencies:** Azure CLI libraries
 
+## Integration Approach
+
+This integration follows a **Proof of Concept (POC)** strategy:
+
+### POC Phase (Current)
+- Prove feasibility of integration
+- Keep existing aks-net-diagnostics output format (text + colors)
+- Minimal code changes for authentication and command integration
+- Focus on making `az aks net-diagnostics` work end-to-end
+- **Timeline:** 25-35 hours
+
+### Post-POC Phase (Future)
+- Refine output formatting for Azure CLI standards (--output json/table/yaml/tsv)
+- Add table transformers for custom table views
+- Comprehensive testing and error handling
+- Full documentation
+
+**See POC-APPROACH.md for detailed strategy**
+
 ## Key Challenges
 
 ### 1. Authentication
