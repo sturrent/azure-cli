@@ -184,8 +184,8 @@ def run_diagnostics(  # pylint: disable=too-many-locals
             show_details=details,
             logger=logger
         )
-        api_probe_results = connectivity_tester.run_connectivity_tests(
-            resource_group_name
+        api_probe_results = connectivity_tester.test_connectivity(
+            enable_probes=True
         )
     else:
         logger.warning(
