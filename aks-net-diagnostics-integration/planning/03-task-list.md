@@ -516,7 +516,62 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 6: Integration Testing & Validation ⏳ NEXT (Current Phase)
+## Phase 6: Integration Testing & Validation ⏳ IN PROGRESS (3% complete)
+
+**Duration:** Started October 20, 2025  
+**Completion:** Test 1.1 ✅ PASSED (1/29 tests complete)  
+**Commit:** fdb423c890 (11 bug fixes)
+
+### 6.0 Real Cluster Testing ⏳ IN PROGRESS
+
+**Test Clusters Available:**
+1. **aks-overlay** (aks-overlay-rg) - Overlay networking, stopped state
+2. **aks-api-connection** (aks-api-connection-lab1-rg) - API server connectivity
+3. **aks-dns-ex1** (aks-dns-ex1-rg) - DNS configuration
+
+**Testing Progress:**
+- [x] Test 1.1: Basic execution (`-n aks-overlay -g aks-overlay-rg`) ✅ PASSED
+- [ ] Test 1.2: With --details flag
+- [ ] Test 1.3: With --json-report flag
+- [ ] Test 1.4: With --probe-test flag
+- [ ] Test 1.5: Combined flags (--details --json-report)
+- [ ] Test 1.6: All flags (--details --probe-test --json-report)
+- [ ] Test 2.x: Cluster-specific scenarios (aks-api-connection, aks-dns-ex1)
+- [ ] Test 3.x: Output format tests
+- [ ] Test 4.x: Error handling tests
+- [ ] Test 5.x: Comparison with standalone tool
+- [ ] Test 6.x: Performance tests
+- [ ] Test 7.x: Edge cases
+
+**Total Tests Planned:** 29  
+**Tests Complete:** 1 (3%)  
+**Bugs Found:** 11  
+**Bugs Fixed:** 11 (100%)
+
+**Test 1.1 Results:**
+- ✅ Command executed successfully
+- ✅ All 10 diagnostic phases completed
+- ✅ Proper summary report generated
+- ✅ Network configuration detected correctly
+- ✅ Outbound IP identified (130.107.45.124)
+- ✅ Warning for stopped cluster displayed
+- ⏱️ Execution time: ~10 seconds
+
+**Bugs Fixed in Test 1.1:**
+1. aks_client.managed_clusters.get() signature
+2-3. agent_pools_client architecture
+4. network_client API version (2022-01-01 → 2023-04-01)
+5-6. subscription_id and credential in clients dict
+7. vmss_analysis parameter type
+8-9. agent_pools_client in custom.py
+10. NSGAnalyzer logger parameter
+11. DNSAnalyzer.analyze() signature
+
+**Documentation:**
+- [x] Created PHASE6-TESTING.md (29 test plan)
+- [x] Created PHASE6-PROGRESS.md (detailed progress report)
+
+**Status:** ⏳ IN PROGRESS - Ready for Test 1.2
 
 ### 6.1 Unit Tests
 - [ ] Create `src/azure-cli/azure/cli/command_modules/acs/tests/latest/test_aks_net_diagnostics.py`
@@ -655,9 +710,9 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 | Phase 3: Authentication Adapter | 3-4 hours | ~3 hours | ✅ COMPLETE | Client factories, command handler |
 | Phase 4: Copy Diagnostic Modules | 8-12 hours | ~8 hours | ✅ COMPLETE | All 14 modules integrated |
 | Phase 5: Register Command & Parameters | 2-3 hours | ~1 hour | ✅ COMPLETE | Command registration |
-| Phase 6: Integration Testing | 4-6 hours | TBD | ⏳ CURRENT | Real cluster testing |
-| Phase 7: Documentation & Polish | 2-4 hours | TBD | � NOT STARTED | Help text, examples |
-| **TOTAL (POC)** | **24-34 hours** | **~18 hours** | **53% complete** | |
+| Phase 6: Integration Testing | 4-6 hours | ~2 hours | ⏳ IN PROGRESS | Test 1.1 passed, 11 bugs fixed |
+| Phase 7: Documentation & Polish | 2-4 hours | TBD | ⏸️ NOT STARTED | Help text, examples |
+| **TOTAL (POC)** | **24-34 hours** | **~20 hours** | **58% complete** | 1 of 29 tests passing |
 
 ---
 
@@ -665,16 +720,29 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ## Current Status
 
-**Last Updated:** October 20, 2025  
+**Last Updated:** October 20, 2025 20:10 UTC  
 **Current Phase:** Phase 6 (Integration Testing & Validation)  
-**Next Action:** Test command with real AKS cluster to validate end-to-end functionality
+**Next Action:** Run Test 1.2 (with --details flag)
 
 **Latest Achievements:**
-- ✅ Command `az aks net-diagnostics` fully registered and working
-- ✅ All 14 diagnostic modules integrated (~6,500 lines)
-- ✅ Perfect code quality (10.00/10 pylint)
-- ✅ 5 phases complete (18 hours of work)
+- ✅ Test 1.1 PASSED - Basic command execution working
+- ✅ 11 integration bugs found and fixed (100% success rate)
+- ✅ All 10 diagnostic phases executing successfully
+- ✅ Proper summary report generation validated
+- ✅ Command tested with real AKS cluster (aks-overlay)
 
-**Blockers:** None - Ready for Phase 6 testing
+**Bug Fix Summary (Test 1.1):**
+- Client architecture issues (aks_client, agent_pools_client)
+- Network client API version compatibility (2022-01-01 → 2023-04-01)
+- Analyzer dependency injection (subscription_id, credential)
+- Parameter type mismatches (list vs dict)
+- Method signature corrections (analyze(), __init__())
 
-**Documentation:** See progress reports in `progress/` directory
+**Blockers:** None - Ready for Test 1.2
+
+**Documentation:**
+- ✅ PHASE6-TESTING.md - Comprehensive 29-test plan
+- ✅ PHASE6-PROGRESS.md - Detailed progress tracking
+- ✅ Updated 03-task-list.md with Phase 6 progress
+
+**Testing Progress:** 1/29 tests complete (3%)
