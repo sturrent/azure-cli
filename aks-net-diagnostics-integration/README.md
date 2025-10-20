@@ -9,7 +9,7 @@ This directory contains the planning documents for integrating the **aks-net-dia
 2. **[planning/00-overview.md](./planning/00-overview.md)** - High-level overview
 3. **[planning/03-task-list.md](./planning/03-task-list.md)** - Task tracker with estimates
 4. **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** - Environment setup guide
-5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🎉 **Phase 4: COMPLETE (100%)** - All 14 modules integrated!
+5. **[progress/PHASE5-PROGRESS.md](./progress/PHASE5-PROGRESS.md)** - 🎉 **Phase 5: COMPLETE (100%)** - Command registered and working!
 
 ### Additional Resources
 - **[planning/01-analysis.md](./planning/01-analysis.md)** - Detailed technical analysis
@@ -88,26 +88,27 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 ## 📊 Project Status
 
 **Branch:** `aks-net-diagnostics-integration`  
-**Current Phase:** Phase 5 - Register Command (NEXT)  
+**Current Phase:** Phase 6 - Integration Testing (NEXT)  
 **Completed Phases:**
 - ✅ Phase 1: Planning (COMPLETE)
 - ✅ Phase 2: Development Environment Setup (COMPLETE)
 - ✅ Phase 3: Authentication Adapter (COMPLETE - 100%)
 - ✅ Phase 4: Copy Diagnostic Modules (COMPLETE - 100%)
+- ✅ Phase 5: Register Command (COMPLETE - 100%)
 
 ### Latest Progress
 
-- 🎉 **Phase 4 COMPLETE!** (October 20, 2025)
-  - ✅ All 14 diagnostic modules integrated (~6,500 lines)
-  - ✅ 4 foundation modules (_version, exceptions, models, validators)
-  - ✅ 1 base analyzer
-  - ✅ 1 cluster data collector
-  - ✅ 7 specialized analyzers (DNS, route table, API server, outbound, NSG, connectivity, misconfiguration)
-  - ✅ 1 report generator (JSON + console output)
-  - ✅ 1 orchestrator with real diagnostic logic (10-phase flow)
-  - ✅ Directory consolidated to `net_diagnostics/`
-  - ✅ Perfect code quality: 10.00/10 pylint across all modules
-  - Latest commit: f00e4d3fb9
+- 🎉 **Phase 5 COMPLETE!** (October 20, 2025)
+  - ✅ Command `az aks net-diagnostics` fully registered in Azure CLI
+  - ✅ All 5 parameters defined (--name, --resource-group, --details, --probe-test, --json-report)
+  - ✅ Command handler wired to orchestrator
+  - ✅ Help text displays correctly
+  - ✅ Command execution reaches Azure API layer
+  - ✅ Perfect code quality: 10.00/10 pylint
+  - ✅ Pre-commit hooks passing
+  - Latest commits: 671d2b86df (code), 6ea5161fa3 (docs)
+  
+- **Previous:** Phase 4 COMPLETE (All 14 modules integrated, ~6,500 lines)
 
 ### Estimated Timeline (POC Approach)
 
@@ -162,6 +163,12 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
     - [x] misconfiguration_analyzer.py ✅
   - [x] Phase 4.5: Report generator ✅ COMPLETE
   - [x] Phase 4.6: Update orchestrator with real diagnostic logic ✅ COMPLETE
+- [x] **Phase 5: Register Command** ✅ COMPLETE (October 2025)
+  - [x] Register 'net-diagnostics' command in commands.py ✅
+  - [x] Define all parameters in _params.py ✅
+  - [x] Update command handler in custom.py ✅
+  - [x] Test command registration and execution ✅
+  - [x] Code quality validation (10.00/10 pylint) ✅
 
 ## 🛠️ Development Setup
 
