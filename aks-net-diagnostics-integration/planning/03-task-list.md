@@ -42,11 +42,21 @@
 **Note:** POC approach - keeping existing output format to prove feasibility first. Output formatting refinement will be addressed after POC is working.
 
 ### 2.2 Clone aks-net-diagnostics
-- [ ] Clone aks-net-diagnostics repository locally
-- [ ] Checkout `azure-sdk` branch
+- [x] Clone aks-net-diagnostics repository locally
+- [x] Checkout `azure-sdk` branch
 - [ ] Review `azure_sdk_client.py` implementation
 - [ ] Review all analyzer modules
-- [ ] Document all external dependencies
+- [x] Document external dependencies
+
+**Dependencies Analysis:**
+- ✅ `azure-mgmt-containerservice>=29.0.0` - Already in CLI (v40.0.0)
+- ❌ `azure-mgmt-network>=25.0.0` - **NOT in CLI** - Need to add to ACS module requirements
+- ✅ `azure-mgmt-compute>=30.0.0` - Already in CLI (v34.1.0)
+- ✅ `azure-mgmt-privatedns>=1.1.0` - Already in CLI (v1.0.0 - may need update)
+- ✅ `azure-mgmt-resource>=23.0.0` - Already in CLI (v23.3.0)
+- ❓ `azure-identity>=1.15.0` - Not found, but CLI uses own auth system
+
+**Action Required:** Add `azure-mgmt-network` to Azure CLI dependencies
 
 **Estimated Time:** 1 hour
 

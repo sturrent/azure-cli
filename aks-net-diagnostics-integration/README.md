@@ -2,14 +2,21 @@
 
 This directory contains the planning documents for integrating the **aks-net-diagnostics** tool into Azure CLI as an `az aks net-diagnostics` subcommand.
 
-## 📋 Planning Documents
+## 📋 Quick Links
 
-1. **[00-overview.md](./00-overview.md)** - Project overview, goals, and current state
-2. **[01-analysis.md](./01-analysis.md)** - Detailed technical analysis of required changes
-3. **[02-integration-strategy.md](./02-integration-strategy.md)** - Chosen integration approach and implementation plan
-4. **[03-task-list.md](./03-task-list.md)** - Actionable task list with priorities and timeline
-5. **[04-testing-plan.md](./04-testing-plan.md)** - Comprehensive testing strategy
-6. **[05-questions-and-decisions.md](./05-questions-and-decisions.md)** - Open questions, decisions log, and risks
+### Essential Documents (Read in Order)
+1. **[planning/POC-APPROACH.md](./planning/POC-APPROACH.md)** - ⭐ Start here for POC strategy
+2. **[planning/00-overview.md](./planning/00-overview.md)** - High-level overview
+3. **[planning/03-task-list.md](./planning/03-task-list.md)** - Task tracker with estimates
+4. **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** - Environment setup guide
+5. **[progress/PHASE2-PROGRESS.md](./progress/PHASE2-PROGRESS.md)** - Latest progress report
+
+### Additional Resources
+- **[planning/01-analysis.md](./planning/01-analysis.md)** - Detailed technical analysis
+- **[planning/02-integration-strategy.md](./planning/02-integration-strategy.md)** - Integration strategy
+- **[planning/04-testing-plan.md](./planning/04-testing-plan.md)** - Testing strategy
+- **[planning/05-questions-and-decisions.md](./planning/05-questions-and-decisions.md)** - Decisions log
+- **[research/OUTPUT-FORMAT-ANALYSIS.md](./research/OUTPUT-FORMAT-ANALYSIS.md)** - Output formatting research
 
 ## 🎯 Quick Start
 
@@ -18,12 +25,36 @@ This directory contains the planning documents for integrating the **aks-net-dia
 2. Review [01-analysis.md](./01-analysis.md) to see what changes are needed
 3. Check [02-integration-strategy.md](./02-integration-strategy.md) for the implementation approach
 
+## 📖 Documentation
+
+### Directory Structure
+
+```
+aks-net-diagnostics-integration/
+├── README.md                    # This file - start here
+├── planning/                    # Planning & strategy documents
+│   ├── 00-overview.md           # High-level overview
+│   ├── 01-analysis.md           # Detailed analysis
+│   ├── 02-integration-strategy.md
+│   ├── 03-task-list.md          # Main task tracker
+│   ├── 04-testing-plan.md
+│   ├── 05-questions-and-decisions.md
+│   └── POC-APPROACH.md          # ⭐ POC strategy
+├── research/                    # Research & analysis
+│   └── OUTPUT-FORMAT-ANALYSIS.md
+├── progress/                    # Phase progress reports
+│   └── PHASE2-PROGRESS.md
+└── guides/                      # Setup & how-to guides
+    └── DEVELOPMENT-SETUP.md     # Environment setup
+```
+
 ### For Implementers
-1. Read all planning documents in order
-2. Start with **POC-APPROACH.md** to understand the simplified strategy
-3. Follow the task list in [03-task-list.md](./03-task-list.md)
-4. Refer to [04-testing-plan.md](./04-testing-plan.md) for testing strategy
-5. Check [05-questions-and-decisions.md](./05-questions-and-decisions.md) for decisions
+1. Start with **[planning/POC-APPROACH.md](./planning/POC-APPROACH.md)** to understand the simplified strategy
+2. Read planning documents in order (00-05 in `planning/` directory)
+3. Follow **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** to set up your environment
+4. Track progress with **[planning/03-task-list.md](./planning/03-task-list.md)**
+5. Check **[planning/05-questions-and-decisions.md](./planning/05-questions-and-decisions.md)** for decisions
+6. Review phase reports in `progress/` directory
 
 ## 🔑 Key Points
 
@@ -111,14 +142,12 @@ ls -la aks-net-diagnostics-integration/
 ### Current Repository Structure
 ```
 azure-cli/
-├── aks-net-diagnostics-integration/    # ← Planning documents (HERE)
+├── aks-net-diagnostics-integration/    # ← Documentation (HERE)
 │   ├── README.md                       # ← This file
-│   ├── 00-overview.md
-│   ├── 01-analysis.md
-│   ├── 02-integration-strategy.md
-│   ├── 03-task-list.md
-│   ├── 04-testing-plan.md
-│   └── 05-questions-and-decisions.md
+│   ├── planning/                       # Planning documents
+│   ├── research/                       # Research & analysis
+│   ├── progress/                       # Phase reports
+│   └── guides/                         # Setup guides
 └── src/
     └── azure-cli/
         └── azure/
