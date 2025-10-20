@@ -228,7 +228,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 **Lines Added:** 306 lines  
 **Code Quality:** 10.00/10 pylint, flake8 passed
 
-### 4.4 Copy Analyzers ⏳ IN PROGRESS (4 of 7 complete - 57%)
+### 4.4 Copy Analyzers ⏳ IN PROGRESS (6 of 7 complete - 86%)
 
 #### 4.4a DNS Analyzer ✅ COMPLETE
 - [x] Copy `dns_analyzer.py` (341 lines adapted) - Private DNS analysis
@@ -290,19 +290,44 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 **Commits:** `8cc97895fd`, `a61bb1f348`  
 **Code Quality:** 10.00/10 pylint score, flake8 passed
 
-#### 4.4e NSG Analyzer ⏳ NEXT
-- [ ] Copy `nsg_analyzer.py` (510 lines) - NSG analysis
+#### 4.4e NSG Analyzer ✅ COMPLETE
+- [x] Copy `nsg_analyzer.py` (579 lines adapted) - NSG analysis
+- [x] Analyzes Network Security Groups on subnets and NICs
+- [x] Checks NSG compliance with AKS requirements
+- [x] Detects rules that may block inter-node communication
+- [x] Validates outbound rules for AKS management traffic
+- [x] Identifies blocking rules with precedence analysis
+- [x] Supports rule override detection
+- [x] Added `_parse_resource_id()` and `_to_dict()` helper methods
+- [x] Pylint disables for too-many-instance-attributes, too-many-nested-blocks
 
-#### 4.4f Connectivity Tester
-- [ ] Copy `nsg_analyzer.py` (510 lines) - NSG analysis
+**Status:** ✅ Complete  
+**Time Spent:** 50 minutes  
+**Commit:** `4dd81fdab7`  
+**Code Quality:** 10.00/10 pylint score, flake8 passed
 
-#### 4.4f Connectivity Tester
-- [ ] Copy `connectivity_tester.py` (615 lines) - Connectivity probing
+#### 4.4f Connectivity Tester ✅ COMPLETE
+- [x] Copy `connectivity_tester.py` (643 lines adapted) - Connectivity probing
+- [x] Active connectivity probing from VMSS instances
+- [x] API server reachability testing (HTTP/DNS)
+- [x] Internet connectivity validation (MCR)
+- [x] DNS resolution checks with private IP validation
+- [x] VMSS command execution via Azure SDK
+- [x] Test dependency tracking and skip logic
+- [x] Detailed vs summary output modes
+- [x] Integration with DNS analyzer for private cluster validation
+- [x] Added `_to_dict()` helper method with recursive snake_case conversion
+- [x] Pylint disable for too-many-instance-attributes (9/7 attributes)
 
-#### 4.4g Misconfiguration Analyzer
+**Status:** ✅ Complete  
+**Time Spent:** 50 minutes  
+**Commit:** `2b113d902b`  
+**Code Quality:** 10.00/10 pylint score, flake8 passed on first attempt
+
+#### 4.4g Misconfiguration Analyzer ⏳ NEXT
 - [ ] Copy `misconfiguration_analyzer.py` (721 lines) - Misconfiguration detection
 
-**Estimated Time:** 4-5 hours total (2-3 hours remaining)  
+**Estimated Time:** 4-5 hours total (1 hour remaining)  
 **Strategy:** One analyzer at a time, smallest to largest
 - [ ] Copy `api_server_analyzer.py` → `analyzers/api_server_analyzer.py`
   - [ ] Update imports only
