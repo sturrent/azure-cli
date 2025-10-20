@@ -10,11 +10,32 @@ Adapted from aks-net-diagnostics tool (azure-sdk branch) for Azure CLI integrati
 
 import logging
 import sys
-from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from azure.cli.command_modules.acs.net_diagnostics._version import __version__
+from azure.cli.command_modules.acs.net_diagnostics.api_server_analyzer import (
+    APIServerAccessAnalyzer
+)
+from azure.cli.command_modules.acs.net_diagnostics.cluster_data_collector import (
+    ClusterDataCollector
+)
+from azure.cli.command_modules.acs.net_diagnostics.connectivity_tester import (
+    ConnectivityTester
+)
+from azure.cli.command_modules.acs.net_diagnostics.dns_analyzer import DNSAnalyzer
+from azure.cli.command_modules.acs.net_diagnostics.misconfiguration_analyzer import (
+    MisconfigurationAnalyzer
+)
+from azure.cli.command_modules.acs.net_diagnostics.nsg_analyzer import NSGAnalyzer
+from azure.cli.command_modules.acs.net_diagnostics.outbound_analyzer import (
+    OutboundConnectivityAnalyzer
+)
+from azure.cli.command_modules.acs.net_diagnostics.report_generator import (
+    ReportGenerator
+)
 
 
-def run_diagnostics(
+def run_diagnostics(  # pylint: disable=too-many-locals
     aks_client,
     network_client,
     compute_client,
@@ -24,7 +45,7 @@ def run_diagnostics(
     subscription_id: str,
     details: bool = False,
     probe_test: bool = False,
-    json_report: bool = False,
+    json_report_path: Optional[str] = None,
     logger: Optional[logging.Logger] = None
 ) -> Dict[str, Any]:
     """
@@ -50,7 +71,7 @@ def run_diagnostics(
         subscription_id: Azure subscription ID
         details: Show detailed output
         probe_test: Enable active connectivity checks (executes commands on nodes)
-        json_report: Output results in JSON format
+        json_report_path: Path to save JSON report (if provided)
         logger: Optional logger instance
 
     Returns:
@@ -65,41 +86,162 @@ def run_diagnostics(
 
     logger.info("Starting AKS network diagnostics for cluster: %s", cluster_name)
 
-    # TODO Phase 3.4: Implementation
-    # This is a POC stub that will be expanded with full diagnostic logic
-
-    # For now, return basic structure showing the orchestration worked
-    result = {
-        "cluster_name": cluster_name,
-        "resource_group": resource_group_name,
-        "subscription_id": subscription_id,
-        "analysis_timestamp": datetime.now().isoformat(),
-        "version": "2.2.0",
-        "status": "POC - Phase 3.4 stub implementation",
-        "message": "Orchestrator created and integrated. Full diagnostic logic will be added incrementally.",
-        "clients_received": {
-            "aks_client": str(type(aks_client).__name__),
-            "network_client": str(type(network_client).__name__),
-            "compute_client": str(type(compute_client).__name__),
-            "privatedns_client": str(type(privatedns_client).__name__)
-        },
-        "parameters": {
-            "details": details,
-            "probe_test": probe_test,
-            "json_report": json_report
-        },
-        # Placeholder sections that will be populated with real data
-        "cluster_info": {},
-        "findings": [],
-        "vnets_analysis": [],
-        "outbound_analysis": {},
-        "nsg_analysis": {},
-        "private_dns_analysis": {},
-        "api_server_access_analysis": {},
-        "api_probe_results": None
+    # Create clients dictionary for analyzers
+    clients = {
+        "aks_client": aks_client,
+        "network_client": network_client,
+        "compute_client": compute_client,
+        "privatedns_client": privatedns_client
     }
 
-    logger.info("Diagnostic orchestration complete (POC mode)")
+    # Initialize result containers
+    findings: List[Dict[str, Any]] = []
+    cluster_info: Dict[str, Any] = {}
+    agent_pools: List[Dict[str, Any]] = []
+    vnets_analysis: List[Dict[str, Any]] = []
+    outbound_analysis: Dict[str, Any] = {}
+    outbound_ips: List[str] = []
+    private_dns_analysis: Dict[str, Any] = {}
+    api_server_access_analysis: Dict[str, Any] = {}
+    vmss_analysis: List[Dict[str, Any]] = []
+    nsg_analysis: Dict[str, Any] = {}
+    api_probe_results: Optional[Dict[str, Any]] = None
+
+    # Phase 1: Collect cluster information
+    logger.info("[1/8] Collecting cluster information...")
+    collector = ClusterDataCollector(
+        aks_client=aks_client,
+        network_client=network_client,
+        compute_client=compute_client,
+        logger=logger
+    )
+    cluster_data = collector.collect_cluster_info(
+        cluster_name,
+        resource_group_name
+    )
+    cluster_info = cluster_data["cluster_info"]
+    agent_pools = cluster_data["agent_pools"]
+
+    # Phase 2: Analyze VNet configuration
+    logger.info("[2/8] Analyzing VNet configuration...")
+    vnets_analysis = collector.collect_vnet_info(agent_pools)
+
+    # Phase 3: Analyze outbound connectivity
+    logger.info("[3/8] Analyzing outbound connectivity...")
+    outbound_analyzer = OutboundConnectivityAnalyzer(
+        cluster_info=cluster_info,
+        agent_pools=agent_pools,
+        clients=clients,
+        logger=logger
+    )
+    outbound_analysis = outbound_analyzer.analyze(show_details=details)
+    outbound_ips = outbound_analyzer.get_outbound_ips()
+
+    # Phase 4: Analyze VMSS configuration
+    logger.info("[4/8] Analyzing VMSS configuration...")
+    vmss_analysis = collector.collect_vmss_info(agent_pools)
+
+    # Phase 5: Analyze NSG configuration
+    logger.info("[5/8] Analyzing Network Security Groups...")
+    nsg_analyzer = NSGAnalyzer(
+        clients=clients,
+        cluster_info=cluster_info,
+        vmss_info=vmss_analysis,
+        logger=logger
+    )
+    nsg_analysis = nsg_analyzer.analyze()
+
+    # Phase 6: Analyze Private DNS configuration
+    logger.info("[6/8] Analyzing Private DNS configuration...")
+    dns_analyzer = DNSAnalyzer(clients=clients, cluster_info=cluster_info)
+    private_dns_analysis = dns_analyzer.analyze(
+        cluster_info,
+        resource_group_name,
+        subscription_id
+    )
+
+    # Phase 7: Analyze API server access
+    logger.info("[7/8] Analyzing API server access configuration...")
+    api_server_analyzer = APIServerAccessAnalyzer(
+        cluster_info=cluster_info,
+        outbound_ips=outbound_ips,
+        outbound_analysis=outbound_analysis,
+        logger=logger
+    )
+    api_server_access_analysis = api_server_analyzer.analyze()
+
+    # Phase 8: Run connectivity tests (if enabled)
+    if probe_test:
+        logger.info("[8/8] Running connectivity tests (probe mode enabled)...")
+        connectivity_tester = ConnectivityTester(
+            cluster_info=cluster_info,
+            clients=clients,
+            dns_analyzer=dns_analyzer,
+            show_details=details,
+            logger=logger
+        )
+        api_probe_results = connectivity_tester.run_connectivity_tests(
+            resource_group_name
+        )
+    else:
+        logger.info(
+            "[8/8] Skipping connectivity tests "
+            "(use --probe-test to enable)"
+        )
+        api_probe_results = {"skipped": True, "reason": "Not requested"}
+
+    # Phase 9: Analyze misconfigurations and generate findings
+    logger.info("Analyzing potential misconfigurations...")
+    misconfiguration_analyzer = MisconfigurationAnalyzer(
+        clients=clients,
+        logger=logger
+    )
+    findings, _ = misconfiguration_analyzer.analyze(
+        cluster_info=cluster_info,
+        outbound_analysis=outbound_analysis,
+        outbound_ips=outbound_ips,
+        private_dns_analysis=private_dns_analysis,
+        api_server_access_analysis=api_server_access_analysis,
+        nsg_analysis=nsg_analysis,
+        api_probe_results=api_probe_results,
+        vmss_analysis=vmss_analysis
+    )
+
+    # Phase 10: Generate report
+    logger.info("Generating diagnostic report...")
+    report_generator = ReportGenerator(
+        cluster_name=cluster_name,
+        resource_group=resource_group_name,
+        subscription=subscription_id,
+        cluster_info=cluster_info,
+        findings=findings,
+        vnets_analysis=vnets_analysis,
+        outbound_analysis=outbound_analysis,
+        outbound_ips=outbound_ips,
+        private_dns_analysis=private_dns_analysis,
+        api_server_access_analysis=api_server_access_analysis,
+        vmss_analysis=vmss_analysis,
+        nsg_analysis=nsg_analysis,
+        api_probe_results=api_probe_results,
+        failure_analysis={"enabled": False},
+        script_version=__version__,
+        logger=logger
+    )
+
+    # Generate JSON report if requested
+    if json_report_path:
+        report_generator.save_json_report(json_report_path)
+
+    # Print console report
+    report_generator.print_console_report(
+        show_details=details,
+        json_report_path=json_report_path
+    )
+
+    # Return complete diagnostic data
+    result = report_generator.generate_json_report()
+
+    logger.info("Diagnostic analysis complete")
 
     return result
 
