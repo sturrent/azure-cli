@@ -3775,7 +3775,7 @@ def aks_net_diagnostics(
     name,
     details=False,
     probe_test=False,
-    json_report=False
+    json_report=None
 ):
     """
     Run network diagnostics on an AKS cluster.
@@ -3792,8 +3792,8 @@ def aks_net_diagnostics(
     :param name: Cluster name
     :param details: Show detailed diagnostic information
     :param probe_test: Run probe connectivity tests
-    :param json_report: Output results in JSON format
-    :return: Diagnostic results (dict if json_report=True, otherwise prints to stdout)
+    :param json_report: Path to save JSON diagnostic report (optional)
+    :return: Diagnostic results (dict if json_report specified, otherwise prints to stdout)
     """
     from azure.cli.command_modules.acs._client_factory import (
         get_network_client,
@@ -3831,13 +3831,10 @@ def aks_net_diagnostics(
         subscription_id=subscription_id,
         details=details,
         probe_test=probe_test,
-        json_report=json_report,
+        json_report_path=json_report,  # Pass as path parameter
         logger=diagnostics_logger
     )
 
-    if json_report:
-        return result
-
-    # Print human-readable output
-    print(json.dumps(result, indent=2))
-    return None
+    # Orchestrator handles JSON file output and console printing internally
+    # Return the result dictionary for CLI framework
+    return result

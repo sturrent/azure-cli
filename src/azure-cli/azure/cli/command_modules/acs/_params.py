@@ -1142,6 +1142,17 @@ def load_arguments(self, _):
             help="Space-separated machine names to delete.",
         )
 
+    # AKS network diagnostics parameters
+    with self.argument_context('aks net-diagnostics', resource_type=ResourceType.MGMT_CONTAINERSERVICE, operation_group='managed_clusters') as c:
+        c.argument('name', options_list=['--name', '-n'], help='Name of the managed cluster.')
+        c.argument('resource_group_name', options_list=['--resource-group', '-g'], help='Name of resource group.')
+        c.argument('details', options_list=['--details'], action='store_true',
+                   help='Show detailed diagnostic information including configuration details.')
+        c.argument('probe_test', options_list=['--probe-test'], action='store_true',
+                   help='Run active connectivity tests (requires network access).')
+        c.argument('json_report', options_list=['--json-report'], type=str,
+                   help='Path to save JSON diagnostic report.')
+
 
 def _get_default_install_location(exe_name):
     system = platform.system()
