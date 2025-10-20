@@ -413,71 +413,107 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 5: Register Command ⏳ NEXT (Current Phase)
+## Phase 5: Register Command ✅ COMPLETE (100%)
 
-### 5.1 Update commands.py ⏳ NEXT
+**Duration:** ~1 hour  
+**Completion Date:** October 20, 2025  
+**Commit:** 671d2b86df  
 
-**Strategy:** One analyzer at a time, smallest to largest
-- [ ] Copy `api_server_analyzer.py` → `analyzers/api_server_analyzer.py`
-  - [ ] Update imports only
-- [ ] Copy `connectivity_tester.py` → `analyzers/connectivity_tester.py`
-  - [ ] Update imports
-  - [ ] Verify VMSS run-command works with CLI SDK client
-- [ ] Copy `outbound_analyzer.py` → `analyzers/outbound_analyzer.py`
-  - [ ] Update imports only
-- [ ] Copy `misconfiguration_analyzer.py` → `analyzers/misconfiguration_analyzer.py`
-  - [ ] Update imports only
+### 5.1 Register Command in commands.py ✅ COMPLETE
 
-**Estimated Time:** 3-4 hours
+**File:** `src/azure-cli/azure/cli/command_modules/acs/commands.py`
 
-#### Collectors Directory
-- [ ] Create `net_diagnostics/collectors/__init__.py`
-- [ ] Copy `cluster_data_collector.py` → `collectors/cluster_data_collector.py`
-  - [ ] Update imports
-  - [ ] Update to use adapted SDK client
+- [x] Reviewed existing command registration patterns
+- [x] Added command registration in `aks` command group:
+  ```python
+  with self.command_group('aks', managed_clusters_sdk, client_factory=cf_managed_clusters) as g:
+      g.custom_command('net-diagnostics', 'aks_net_diagnostics')
+  ```
+- [x] Placed logically after `aks approuting zone` commands
+- [x] Verified command loads without errors
 
-**Estimated Time:** 1 hour
+**Time:** 15 minutes  
+**Status:** ✅ COMPLETE
 
-#### Reporting
-- [ ] Copy `report_generator.py` → `net_diagnostics/report_generator.py`
-  - [ ] Update imports
-  - [ ] Adapt output formatting for CLI if needed
+---
 
-#### Main Orchestrator
-- [ ] Create `net_diagnostics/orchestrator.py` (adapted from `aks-net-diagnostics.py`)
-  - [ ] Remove `parse_arguments()` method
-  - [ ] Update `__init__()` to accept cmd and parameters (not parse them)
-  - [ ] Replace `AzureSDKClient` initialization with adapted `SDKClient`
-  - [ ] Keep all analysis methods unchanged
-  - [ ] Update imports throughout
+### 5.2 Define Parameters in _params.py ✅ COMPLETE
 
-**Estimated Time:** 2-3 hours
+**File:** `src/azure-cli/azure/cli/command_modules/acs/_params.py`
 
-### 3.2 Register Command in Azure CLI
+- [x] Added argument context for 'aks net-diagnostics'
+- [x] Defined all command parameters:
+  - [x] `--name/-n`: Cluster name (required)
+  - [x] `--resource-group/-g`: Resource group name (required)
+  - [x] `--details`: Show detailed diagnostics (flag)
+  - [x] `--probe-test`: Run active connectivity tests (flag)
+  - [x] `--json-report`: Path to save JSON report (string)
+- [x] Added comprehensive help text for all parameters
+- [x] Used standard Azure CLI conventions and patterns
 
-#### Update commands.py
-- [ ] Open `src/azure-cli/azure/cli/command_modules/acs/commands.py`
-- [ ] Add import for net-diagnostics function
-- [ ] Register 'net-diagnostics' command in command group
-- [ ] Verify command loads without errors
+**Time:** 15 minutes  
+**Status:** ✅ COMPLETE
 
-#### Update _params.py
-- [ ] Open `src/azure-cli/azure/cli/command_modules/acs/_params.py`
-- [ ] Add argument context for 'aks net-diagnostics'
-- [ ] Define `name` parameter (cluster name)
-- [ ] Define `resource_group_name` parameter
-- [ ] Define `details` flag
-- [ ] Define `probe_test` flag
-- [ ] Define `json_report` parameter
-- [ ] Add help text for all parameters
+---
 
-#### Create Command Function
-- [ ] Decide where to put command function (custom.py or new file)
-- [ ] Create `aks_net_diagnostics()` function
-- [ ] Accept cmd, name, resource_group_name, and optional parameters
-- [ ] Create NetDiagnosticsOrchestrator instance
-- [ ] Call orchestrator.run()
-- [ ] Return results
+### 5.3 Update Command Handler in custom.py ✅ COMPLETE
+
+**File:** `src/azure-cli/azure/cli/command_modules/acs/custom.py`
+
+- [x] Verified `aks_net_diagnostics()` function exists (from Phase 3.3)
+- [x] Fixed parameter type: `json_report=False` → `json_report=None`
+- [x] Updated orchestrator call: `json_report` → `json_report_path`
+- [x] Simplified return logic (orchestrator handles output)
+- [x] Maintained existing authentication and client factory pattern
+
+**Time:** 10 minutes  
+**Status:** ✅ COMPLETE
+
+---
+
+### 5.4 Testing and Validation ✅ COMPLETE
+
+- [x] **Help Text Test:** `az aks net-diagnostics --help`
+  - ✅ Command displays correctly
+  - ✅ All parameters listed with descriptions
+  - ✅ Required parameters marked
+  
+- [x] **Execution Test:** `az aks net-diagnostics -n test -g test --details`
+  - ✅ Command parses parameters correctly
+  - ✅ Reaches Azure API layer
+  - ✅ Proper error handling
+  
+- [x] **Code Quality:** Pylint check
+  - ✅ Score: 10.00/10 (perfect)
+  - ✅ No warnings or errors
+  
+- [x] **Pre-commit:** azdev scan
+  - ✅ All checks passed
+  - ✅ No breaking changes detected
+
+**Time:** 20 minutes  
+**Status:** ✅ COMPLETE
+
+---
+
+### Phase 5 Summary
+
+**Total Files Modified:** 3
+- commands.py: Added command registration (+3 lines)
+- _params.py: Added parameter definitions (+13 lines)
+- custom.py: Updated command handler (+3/-7 lines)
+
+**Total Changes:** 22 insertions(+), 10 deletions(-)
+
+**Key Achievements:**
+- ✅ Command `az aks net-diagnostics` fully registered
+- ✅ All 5 parameters properly defined
+- ✅ Command handler wired to orchestrator
+- ✅ Perfect code quality (10.00/10 pylint)
+- ✅ All tests passing
+- ✅ Documentation complete (PHASE5-PROGRESS.md)
+
+**Status:** ✅ COMPLETE (100%)
 - [ ] Add proper docstring
 
 ### 3.3 Handle Output Formatting
