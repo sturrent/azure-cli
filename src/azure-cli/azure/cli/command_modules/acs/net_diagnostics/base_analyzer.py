@@ -52,12 +52,13 @@ class BaseAnalyzer(ABC):
         """Add a finding to the results"""
         self.findings.append(finding)
         # Map severity to appropriate log level
+        # Add 2-space indentation to match other diagnostic messages
         if finding.severity.value in ["critical", "error"]:
-            self.logger.error(finding.message)
+            self.logger.error("  %s", finding.message)
         elif finding.severity.value == "warning":
-            self.logger.warning(finding.message)
+            self.logger.warning("  %s", finding.message)
         else:
-            self.logger.info(finding.message)
+            self.logger.info("  %s", finding.message)
 
     def get_findings(self) -> List[Finding]:
         """Get all findings from this analyzer"""
