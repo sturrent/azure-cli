@@ -3802,7 +3802,10 @@ def aks_net_diagnostics(
         cf_agent_pools
     )
     from azure.cli.command_modules.acs.net_diagnostics import run_diagnostics
-    import logging
+    from knack.log import get_logger
+
+    # Get Azure CLI logger
+    logger = get_logger(__name__)
 
     # Get cluster information
     mc = client.get(resource_group_name, name)
@@ -3824,9 +3827,6 @@ def aks_net_diagnostics(
     privatedns_client = get_privatedns_client(cmd.cli_ctx, subscription_id)
     compute_client = get_compute_client(cmd.cli_ctx)
 
-    # Setup logger for diagnostics
-    diagnostics_logger = logging.getLogger("aks_net_diagnostics")
-
     # Run orchestrator with CLI-authenticated clients
     result = run_diagnostics(
         aks_client=client,
@@ -3841,7 +3841,7 @@ def aks_net_diagnostics(
         details=details,
         probe_test=probe_test,
         json_report_path=json_report,  # Pass as path parameter
-        logger=diagnostics_logger
+        logger=logger
     )
 
     # Orchestrator handles JSON file output and console printing internally

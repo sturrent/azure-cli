@@ -87,8 +87,9 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Setup logger if not provided
     if logger is None:
         logger = _setup_logging()
-
-    logger.info("Starting AKS network diagnostics for cluster: %s", cluster_name)
+    
+    # Use warning level for progress messages so they show in Azure CLI
+    logger.warning("Starting AKS network diagnostics for cluster: %s", cluster_name)
 
     # Create clients dictionary for analyzers
     clients = {
@@ -114,7 +115,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     api_probe_results: Optional[Dict[str, Any]] = None
 
     # Phase 1: Collect cluster information
-    logger.info("[1/8] Collecting cluster information...")
+    logger.warning("[1/8] Collecting cluster information...")
     collector = ClusterDataCollector(
         aks_client=aks_client,
         agent_pools_client=agent_pools_client,
@@ -130,11 +131,11 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     agent_pools = cluster_data["agent_pools"]
 
     # Phase 2: Analyze VNet configuration
-    logger.info("[2/8] Analyzing VNet configuration...")
+    logger.warning("[2/8] Analyzing VNet configuration...")
     vnets_analysis = collector.collect_vnet_info(agent_pools)
 
     # Phase 3: Analyze outbound connectivity
-    logger.info("[3/8] Analyzing outbound connectivity...")
+    logger.warning("[3/8] Analyzing outbound connectivity...")
     outbound_analyzer = OutboundConnectivityAnalyzer(
         cluster_info=cluster_info,
         agent_pools=agent_pools,
@@ -145,11 +146,11 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     outbound_ips = outbound_analyzer.get_outbound_ips()
 
     # Phase 4: Analyze VMSS configuration
-    logger.info("[4/8] Analyzing VMSS configuration...")
+    logger.warning("[4/8] Analyzing VMSS configuration...")
     vmss_analysis = collector.collect_vmss_info(cluster_info)
 
     # Phase 5: Analyze NSG configuration
-    logger.info("[5/8] Analyzing Network Security Groups...")
+    logger.warning("[5/8] Analyzing Network Security Groups...")
     nsg_analyzer = NSGAnalyzer(
         clients=clients,
         cluster_info=cluster_info,
@@ -159,12 +160,12 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     nsg_analysis = nsg_analyzer.analyze()
 
     # Phase 6: Analyze Private DNS configuration
-    logger.info("[6/8] Analyzing Private DNS configuration...")
-    dns_analyzer = DNSAnalyzer(clients=clients, cluster_info=cluster_info)
+    logger.warning("[6/8] Analyzing Private DNS configuration...")
+    dns_analyzer = DNSAnalyzer(clients=clients, cluster_info=cluster_info, logger=logger)
     private_dns_analysis = dns_analyzer.analyze()
 
     # Phase 7: Analyze API server access
-    logger.info("[7/8] Analyzing API server access configuration...")
+    logger.warning("[7/8] Analyzing API server access configuration...")
     api_server_analyzer = APIServerAccessAnalyzer(
         cluster_info=cluster_info,
         outbound_ips=outbound_ips,
@@ -175,7 +176,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
 
     # Phase 8: Run connectivity tests (if enabled)
     if probe_test:
-        logger.info("[8/8] Running connectivity tests (probe mode enabled)...")
+        logger.warning("[8/8] Running connectivity tests (probe mode enabled)...")
         connectivity_tester = ConnectivityTester(
             cluster_info=cluster_info,
             clients=clients,
@@ -187,14 +188,14 @@ def run_diagnostics(  # pylint: disable=too-many-locals
             resource_group_name
         )
     else:
-        logger.info(
+        logger.warning(
             "[8/8] Skipping connectivity tests "
             "(use --probe-test to enable)"
         )
         api_probe_results = {"skipped": True, "reason": "Not requested"}
 
     # Phase 9: Analyze misconfigurations and generate findings
-    logger.info("Analyzing potential misconfigurations...")
+    logger.warning("Analyzing potential misconfigurations...")
     misconfiguration_analyzer = MisconfigurationAnalyzer(
         clients=clients,
         logger=logger
