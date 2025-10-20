@@ -88,7 +88,10 @@ class ConnectivityTester:
         power_code = power_state.get("code", "Unknown") if isinstance(power_state, dict) else str(power_state)
 
         if power_code.lower() == "stopped":
-            self.logger.info("Cluster is in stopped state. Skipping connectivity tests.")
+            self.logger.warning(
+                "  Connectivity tests skipped: Cluster is in stopped state. "
+                "Start cluster with 'az aks start' to run connectivity tests."
+            )
             self.probe_results = {
                 "enabled": False,
                 "skipped": True,
