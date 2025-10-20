@@ -3798,7 +3798,8 @@ def aks_net_diagnostics(
     from azure.cli.command_modules.acs._client_factory import (
         get_network_client,
         get_privatedns_client,
-        get_compute_client
+        get_compute_client,
+        cf_agent_pools
     )
     from azure.cli.command_modules.acs.net_diagnostics import run_diagnostics
     import logging
@@ -3812,7 +3813,13 @@ def aks_net_diagnostics(
     # Get subscription ID from CLI context
     subscription_id = get_subscription_id(cmd.cli_ctx)
 
+    # Get credential for cross-subscription scenarios
+    from azure.cli.core._profile import Profile
+    profile = Profile(cli_ctx=cmd.cli_ctx)
+    credential, _, _ = profile.get_login_credentials(subscription_id=subscription_id)
+
     # Create Azure SDK clients using CLI authentication
+    agent_pools_client = cf_agent_pools(cmd.cli_ctx)
     network_client = get_network_client(cmd.cli_ctx, subscription_id)
     privatedns_client = get_privatedns_client(cmd.cli_ctx, subscription_id)
     compute_client = get_compute_client(cmd.cli_ctx)
@@ -3823,9 +3830,11 @@ def aks_net_diagnostics(
     # Run orchestrator with CLI-authenticated clients
     result = run_diagnostics(
         aks_client=client,
+        agent_pools_client=agent_pools_client,
         network_client=network_client,
         compute_client=compute_client,
         privatedns_client=privatedns_client,
+        credential=credential,
         resource_group_name=resource_group_name,
         cluster_name=name,
         subscription_id=subscription_id,

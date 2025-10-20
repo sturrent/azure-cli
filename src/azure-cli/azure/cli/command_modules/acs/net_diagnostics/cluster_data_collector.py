@@ -44,6 +44,7 @@ class ClusterDataCollector:
     def __init__(
         self,
         aks_client,
+        agent_pools_client,
         network_client,
         compute_client,
         logger: Optional[logging.Logger] = None
@@ -53,11 +54,13 @@ class ClusterDataCollector:
 
         Args:
             aks_client: Authenticated ContainerServiceClient
+            agent_pools_client: Authenticated AgentPoolsOperations client
             network_client: Authenticated NetworkManagementClient
             compute_client: Authenticated ComputeManagementClient
             logger: Optional logger instance. If not provided, creates a default logger.
         """
         self.aks_client = aks_client
+        self.agent_pools_client = agent_pools_client
         self.network_client = network_client
         self.compute_client = compute_client
         self.logger = logger or logging.getLogger(__name__)
@@ -82,7 +85,7 @@ class ClusterDataCollector:
 
         try:
             # Get cluster info using SDK
-            cluster = self.aks_client.managed_clusters.get(resource_group, cluster_name)
+            cluster = self.aks_client.get(resource_group, cluster_name)
             cluster_result = _to_dict(cluster)
 
             # Extract error details from status if available
@@ -114,7 +117,7 @@ class ClusterDataCollector:
 
         try:
             # Get agent pools
-            agent_pools_list = list(self.aks_client.agent_pools.list(resource_group, cluster_name))
+            agent_pools_list = list(self.agent_pools_client.list(resource_group, cluster_name))
             agent_pools = [_to_dict(pool) for pool in agent_pools_list]
 
         except (ResourceNotFoundError, HttpResponseError) as e:
