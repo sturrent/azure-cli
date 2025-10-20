@@ -112,11 +112,11 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 
 ### Estimated Timeline (POC Approach)
 
-- **Total Effort:** 25-35 hours (simplified POC approach)
-- **Completed:** ~15 hours (Phases 1-4 partial)
-- **Remaining:** ~10-20 hours
+- **Total Effort:** 24-34 hours (simplified POC approach)
+- **Completed:** ~18 hours (Phases 1-5 complete)
+- **Remaining:** ~6-16 hours (Testing & Polish)
 - **Integration Complexity:** Medium (tool already uses Azure SDK)
-- **Primary Work:** Complete final analyzer, report generator, orchestrator, testing
+- **Current Status:** Command registered and working, ready for integration testing
 - **Deferred:** Output formatting refactoring (post-POC)
 
 ### Progress Checklist
@@ -291,11 +291,11 @@ See [05-questions-and-decisions.md](./05-questions-and-decisions.md) for:
 | Phase 1: Planning | 5 hours | ✅ COMPLETE |
 | Phase 2: Development Environment Setup | 15 minutes | ✅ COMPLETE |
 | Phase 3: Authentication Adapter | 3-4 hours | ✅ COMPLETE |
-| Phase 4: Copy Diagnostic Modules | 8-12 hours | ⏳ IN PROGRESS (93% complete) |
-| Phase 5: Register Command & Parameters | 2-3 hours | 🔴 Not Started |
-| Phase 6: Integration Testing | 4-6 hours | 🔴 Not Started |
+| Phase 4: Copy Diagnostic Modules | 8-10 hours | ✅ COMPLETE |
+| Phase 5: Register Command & Parameters | 1 hour | ✅ COMPLETE |
+| Phase 6: Integration Testing | 4-6 hours | ⏳ NEXT (Current) |
 | Phase 7: Documentation & Polish | 2-4 hours | 🔴 Not Started |
-| **TOTAL (POC)** | **25-35 hours** | **~15 hours completed** |
+| **TOTAL (POC)** | **24-34 hours** | **~18 hours completed** |
 
 **Note:** Using POC approach - deferring output formatting refactoring. Timeline assumes working on this as a focused effort. Calendar time will vary based on availability and review cycles.
 

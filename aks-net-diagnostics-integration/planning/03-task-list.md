@@ -6,10 +6,9 @@
 - [x] **Phase 2:** Development Environment Setup ✅ COMPLETE
 - [x] **Phase 3:** Authentication Adapter ✅ COMPLETE
 - [x] **Phase 4:** Copy Diagnostic Modules ✅ COMPLETE (100%)
-- [ ] **Phase 5:** Register Command ⏳ (Current)
-- [ ] **Phase 6:** Define Parameters
-- [ ] **Phase 7:** Integration Testing
-- [ ] **Phase 8:** Documentation & Polish
+- [x] **Phase 5:** Register Command & Define Parameters ✅ COMPLETE (100%)
+- [ ] **Phase 6:** Integration Testing ⏳ (Current)
+- [ ] **Phase 7:** Documentation & Polish
 
 ---
 
@@ -525,9 +524,9 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 4: Testing & Validation
+## Phase 6: Integration Testing & Validation ⏳ NEXT (Current Phase)
 
-### 4.1 Unit Tests
+### 6.1 Unit Tests
 - [ ] Create `src/azure-cli/azure/cli/command_modules/acs/tests/latest/test_aks_net_diagnostics.py`
 - [ ] Write test: basic command execution
 - [ ] Write test: with --details flag
@@ -538,7 +537,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Mock Azure SDK calls appropriately
 - [ ] Run tests: `azdev test acs --test test_aks_net_diagnostics`
 
-### 4.2 Integration Tests
+### 6.2 Integration Tests
 - [ ] Create test AKS cluster in test subscription
 - [ ] Test: `az aks net-diagnostics -n testcluster -g testrg`
 - [ ] Test: `az aks net-diagnostics -n testcluster -g testrg --details`
@@ -549,14 +548,14 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Verify output matches standalone tool output
 - [ ] Delete test cluster
 
-### 4.3 Comparison Testing
+### 6.3 Comparison Testing
 - [ ] Run standalone tool on production cluster: `python aks-net-diagnostics.py -n prod -g rg`
 - [ ] Run CLI command on same cluster: `az aks net-diagnostics -n prod -g rg`
 - [ ] Compare findings (should be identical or very similar)
 - [ ] Document any differences and reasons
 - [ ] Verify both tools detect same issues
 
-### 4.4 Edge Case Testing
+### 6.4 Edge Case Testing
 - [ ] Test with private cluster
 - [ ] Test with cluster in failed state
 - [ ] Test with cluster behind firewall/NVA
@@ -565,7 +564,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Test with different auth scenarios (service principal, managed identity)
 - [ ] Test with different subscription contexts
 
-### 4.5 Performance Testing
+### 6.5 Performance Testing
 - [ ] Measure execution time for typical cluster
 - [ ] Compare with standalone tool performance
 - [ ] Profile if significantly slower
@@ -573,16 +572,16 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 5: Documentation & Polish
+## Phase 7: Documentation & Polish
 
-### 5.1 Help Text
+### 7.1 Help Text
 - [ ] Add help text to command in `_help.py`
 - [ ] Add examples section
 - [ ] Add description of what the command does
 - [ ] Document all parameters
 - [ ] Add warnings for --probe-test flag
 
-### 5.2 Code Quality
+### 7.2 Code Quality
 - [ ] Run pylint: `azdev style acs`
 - [ ] Fix all pylint issues
 - [ ] Run linter: `azdev linter acs`
@@ -591,13 +590,13 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Add type hints where missing
 - [ ] Add docstrings where missing
 
-### 5.3 Documentation Files
+### 7.3 Documentation Files
 - [ ] Update ACS module README if it exists
 - [ ] Create or update documentation for net-diagnostics subcommand
 - [ ] Add to Azure CLI command reference (if applicable)
 - [ ] Document differences from standalone tool (if any)
 
-### 5.4 Examples
+### 7.4 Examples
 - [ ] Add example to help text: basic usage
 - [ ] Add example to help text: with details
 - [ ] Add example to help text: with probe-test
@@ -606,9 +605,9 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 6: Review & Merge
+## Phase 8: Review & Merge (Future)
 
-### 6.1 Pre-PR Checklist
+### 8.1 Pre-PR Checklist
 - [ ] All tests pass: `azdev test acs`
 - [ ] Style checks pass: `azdev style acs`
 - [ ] Linter passes: `azdev linter acs`
@@ -618,7 +617,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Version updated if needed
 - [ ] HISTORY.rst updated with change
 
-### 6.2 Create Pull Request
+### 8.2 Create Pull Request
 - [ ] Create PR branch based on latest `dev`
 - [ ] Format PR title following guidelines: `[ACS] Add net-diagnostics subcommand`
 - [ ] Fill out PR description template
@@ -626,14 +625,14 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Add testing instructions for reviewers
 - [ ] Request reviews from ACS module owners
 
-### 6.3 Address Review Feedback
+### 8.3 Address Review Feedback
 - [ ] Respond to all review comments
 - [ ] Make requested changes
 - [ ] Re-run tests after changes
 - [ ] Update documentation if needed
 - [ ] Request re-review
 
-### 6.4 Post-Merge
+### 8.4 Post-Merge
 - [ ] Verify command in next Azure CLI release
 - [ ] Monitor for issues/bugs reported
 - [ ] Create follow-up issues for any enhancements
