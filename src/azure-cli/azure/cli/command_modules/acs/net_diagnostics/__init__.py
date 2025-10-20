@@ -5,11 +5,11 @@
 
 """
 AKS Network Diagnostics Module
-Integrated from aks-net-diagnostics tool (azure-sdk branch)
+
+This module provides comprehensive network diagnostics for Azure Kubernetes Service (AKS) clusters.
 """
 
-__version__ = "2.2.0"
+from ._version import __version__
+from .orchestrator import run_diagnostics
 
-__all__ = ["run_diagnostics"]
-
-from .orchestrator import run_diagnostics  # noqa: F401
+__all__ = ["run_diagnostics", "__version__"]
