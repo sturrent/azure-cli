@@ -20,9 +20,10 @@ This directory contains the planning documents for integrating the **aks-net-dia
 
 ### For Implementers
 1. Read all planning documents in order
-2. Follow the task list in [03-task-list.md](./03-task-list.md)
-3. Refer to [04-testing-plan.md](./04-testing-plan.md) for testing strategy
-4. Check [05-questions-and-decisions.md](./05-questions-and-decisions.md) for unresolved items
+2. Start with **POC-APPROACH.md** to understand the simplified strategy
+3. Follow the task list in [03-task-list.md](./03-task-list.md)
+4. Refer to [04-testing-plan.md](./04-testing-plan.md) for testing strategy
+5. Check [05-questions-and-decisions.md](./05-questions-and-decisions.md) for decisions
 
 ## 🔑 Key Points
 
@@ -31,6 +32,13 @@ This directory contains the planning documents for integrating the **aks-net-dia
 # Users will be able to run:
 az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --json-report
 ```
+
+### POC Approach
+- **Goal:** Prove feasibility of integration before full refinement
+- **Keep:** Existing aks-net-diagnostics output format (text + colors)
+- **Focus:** Authentication adapter + command integration
+- **Defer:** Output formatting refactoring (json/table/yaml/tsv support)
+- **See:** POC-APPROACH.md for complete strategy
 
 ### Main Challenges
 1. **Authentication:** Adapt Azure SDK client to use CLI's authentication context (`cmd.cli_ctx`)
@@ -49,13 +57,14 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 ## 📊 Project Status
 
 **Branch:** `aks-net-diagnostics-integration`  
-**Phase:** Planning (~95% complete)  
-**Next Phase:** Code Preparation
+**Phase:** Planning - Phase 1 ✅ COMPLETE  
+**Next Phase:** Phase 2 - Code Preparation
 
-### Estimated Timeline
-- **Total Effort:** 33-48 hours
+### Estimated Timeline (POC Approach)
+- **Total Effort:** 25-35 hours (simplified POC approach)
 - **Integration Complexity:** Medium (tool already uses Azure SDK)
 - **Primary Work:** Authentication adaptation and CLI framework integration
+- **Deferred:** Output formatting refactoring (post-POC)
 
 ### Progress Checklist
 - [x] Create planning documents
@@ -66,6 +75,8 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 - [x] Define integration strategy
 - [x] Create comprehensive task list
 - [x] Create testing plan
+- [x] Define POC approach
+- [x] Research output formatting options
 - [ ] Clone and review azure-sdk branch implementation
 - [ ] Prototype SDK client authentication adaptation
 - [ ] Begin code integration

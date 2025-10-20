@@ -27,26 +27,29 @@
 ---
 
 #### Q2: Output Formatting
-**Question:** Should output be formatted differently for CLI vs standalone tool?
+**Question:** How should we handle the different output formats between the standalone tool and Azure CLI?
 
-**Context:** Azure CLI has specific output formats (json, table, yaml, tsv). Our tool currently has its own output format.
-
-**Status:** 🟡 **NEEDS DECISION**
+**Context:**
+- aks-net-diagnostics produces custom formatted text output with colors
+- Azure CLI expects commands to return structured data (dictionaries/lists)
+- Azure CLI supports multiple output formats: `--output json/table/yaml/tsv`
+- Other az commands typically return Python objects that CLI auto-formats
 
 **Options:**
-1. Keep existing output format, ignore CLI output modes
-2. Adapt output to work with CLI's `--output` parameter
-3. Hybrid: custom format by default, support CLI modes
+1. Keep current text output using `print()` (like `az aks check-acr`)
+2. Return structured data and create custom table transformer
+3. Hybrid: structured data + logger.info() for rich console output
 
-**Considerations:**
-- User experience consistency
-- Azure CLI conventions
-- Backwards compatibility with standalone tool
+**Status:** ✅ **DECIDED** - Use existing output format for POC
 
-**Action Items:**
-- [ ] Review Azure CLI output expectations
-- [ ] Check how other diagnostic commands handle output
-- [ ] Decide on approach
+**Decision:** For the POC phase, we'll keep the existing aks-net-diagnostics output format (text with colors + optional `--json-report`). This allows us to:
+- Prove feasibility of integration first
+- Avoid premature refactoring
+- Revisit output formatting after POC is working
+
+**Impact:** Minimal - command will work like `az aks check-acr` with text output. Can be refactored later.
+
+**See:** OUTPUT-FORMAT-ANALYSIS.md for full analysis of post-POC options
 
 ---
 

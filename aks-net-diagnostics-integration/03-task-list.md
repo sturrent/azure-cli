@@ -39,6 +39,8 @@
 - [ ] Verify can run `az` commands from development environment
 - [ ] Test running existing ACS commands
 
+**Note:** POC approach - keeping existing output format to prove feasibility first. Output formatting refinement will be addressed after POC is working.
+
 ### 2.2 Clone aks-net-diagnostics
 - [ ] Clone aks-net-diagnostics repository locally
 - [ ] Checkout `azure-sdk` branch
