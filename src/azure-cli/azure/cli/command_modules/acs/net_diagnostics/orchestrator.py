@@ -211,6 +211,19 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         vmss_analysis=vmss_analysis
     )
 
+    # Collect findings from individual analyzers
+    # DNS analyzer creates findings via add_finding() but they're not
+    # included in misconfiguration_analyzer's findings
+    if hasattr(dns_analyzer, 'findings') and dns_analyzer.findings:
+        logger.debug("Collecting %d findings from DNS analyzer", len(dns_analyzer.findings))
+        # Convert Finding objects to dicts for report generator
+        findings.extend([f.to_dict() for f in dns_analyzer.findings])
+    
+    if hasattr(nsg_analyzer, 'findings') and nsg_analyzer.findings:
+        logger.debug("Collecting %d findings from NSG analyzer", len(nsg_analyzer.findings))
+        # Convert Finding objects to dicts for report generator
+        findings.extend([f.to_dict() for f in nsg_analyzer.findings])
+
     # Phase 10: Generate report
     logger.info("Generating diagnostic report...")
     report_generator = ReportGenerator(
