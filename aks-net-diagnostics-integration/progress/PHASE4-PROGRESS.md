@@ -1,8 +1,8 @@
 # Phase 4: Copy Diagnostic Modules - Progress Report
 
-**Status:** ⏳ IN PROGRESS (72% complete)  
+**Status:** ⏳ IN PROGRESS (79% complete)  
 **Start Date:** October 20, 2025  
-**Current Sub-phase:** 4.4 - Analyzers (IN PROGRESS - 4 of 7 complete)  
+**Current Sub-phase:** 4.4 - Analyzers (IN PROGRESS - 5 of 7 complete)  
 
 ---
 
@@ -100,14 +100,14 @@ Phase 4 focuses on incrementally copying and adapting diagnostic modules from th
 
 ## 📋 Phase 4.4: Analyzers (IN PROGRESS)
 
-### Status: ⏳ 4 of 7 complete (57%)
+### Status: ⏳ 5 of 7 complete (71%)
 
 - ✅ Copy `dns_analyzer.py` (341 lines adapted) - Private DNS analysis
 - ✅ Copy `route_table_analyzer.py` (407 lines adapted) - Route table analysis
 - ✅ Copy `api_server_analyzer.py` (464 lines adapted) - API server access
 - ✅ Copy `outbound_analyzer.py` (591 lines adapted) - Outbound connectivity
-- [ ] Copy `nsg_analyzer.py` (510 lines) - NSG analysis - **NEXT**
-- [ ] Copy `connectivity_tester.py` (615 lines) - Connectivity probing
+- ✅ Copy `nsg_analyzer.py` (579 lines adapted) - NSG analysis
+- [ ] Copy `connectivity_tester.py` (615 lines) - Connectivity probing - **NEXT**
 - [ ] Copy `misconfiguration_analyzer.py` (721 lines) - Misconfiguration detection
 
 **Progress:** 
@@ -147,7 +147,18 @@ Phase 4 focuses on incrementally copying and adapting diagnostic modules from th
   - Pylint disables for structural patterns (following Azure CLI conventions)
   - 10.00/10 pylint score, flake8 passed
 
-**Estimated Time:** 4-5 hours total (2-3 hours remaining)  
+- ✅ **NSG Analyzer** - Commit `4dd81fdab7` (October 20, 2025)
+  - Analyzes Network Security Groups on subnets and NICs
+  - Checks NSG compliance with AKS requirements
+  - Detects rules that may block inter-node communication
+  - Validates outbound rules for AKS management traffic
+  - Identifies blocking rules with precedence analysis
+  - Supports rule override detection
+  - Added `_parse_resource_id()` and `_to_dict()` helper methods
+  - Pylint disables for too-many-instance-attributes, too-many-nested-blocks
+  - 10.00/10 pylint score, flake8 passed
+
+**Estimated Time:** 4-5 hours total (1-2 hours remaining)  
 **Complexity:** Medium-High (significant adaptation needed)
 
 ---
