@@ -20,7 +20,7 @@ from .models import Finding
 class BaseAnalyzer(ABC):
     """Base class for all analyzers"""
 
-    def __init__(self, clients: Dict[str, Any], cluster_info: Dict[str, Any]):
+    def __init__(self, clients: Dict[str, Any], cluster_info: Dict[str, Any], logger=None):
         """
         Initialize analyzer
 
@@ -28,10 +28,14 @@ class BaseAnalyzer(ABC):
             clients: Dictionary of pre-authenticated Azure SDK clients
                      (aks_client, network_client, compute_client, privatedns_client)
             cluster_info: AKS cluster information
+            logger: Optional logger instance (uses standard logging if not provided)
         """
         self.clients = clients
         self.cluster_info = cluster_info
-        self.logger = logging.getLogger(f"aks_net_diagnostics.{self.__class__.__name__}")
+        if logger is not None:
+            self.logger = logger
+        else:
+            self.logger = logging.getLogger(f"aks_net_diagnostics.{self.__class__.__name__}")
         self.findings: List[Finding] = []
 
     @abstractmethod

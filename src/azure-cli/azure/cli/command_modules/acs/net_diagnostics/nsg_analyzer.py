@@ -29,7 +29,7 @@ class NSGAnalyzer(BaseAnalyzer):
             vmss_info: VMSS information from VMSS analyzer
             logger: Optional logger instance
         """
-        super().__init__(clients, cluster_info)
+        super().__init__(clients, cluster_info, logger=logger)
         self.vmss_info = vmss_info
         self.network_client = clients.get('network_client')
         self.subscription_id = clients.get('subscription_id')

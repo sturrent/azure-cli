@@ -27,15 +27,16 @@ from .models import Finding, FindingCode
 class DNSAnalyzer(BaseAnalyzer):
     """Analyzer for AKS DNS configuration and resolution"""
 
-    def __init__(self, clients: Dict[str, Any], cluster_info: Dict[str, Any]):
+    def __init__(self, clients: Dict[str, Any], cluster_info: Dict[str, Any], logger=None):
         """
         Initialize DNS analyzer
 
         Args:
             clients: Dictionary of pre-authenticated Azure SDK clients
             cluster_info: AKS cluster information
+            logger: Optional logger instance
         """
-        super().__init__(clients, cluster_info)
+        super().__init__(clients, cluster_info, logger=logger)
         self.dns_analysis: Dict[str, Any] = {}
         self.vnet_dns_servers: List[str] = []
 
