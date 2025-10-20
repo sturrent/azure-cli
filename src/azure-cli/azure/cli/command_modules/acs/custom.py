@@ -3767,7 +3767,7 @@ def is_monitoring_addon_enabled(addons, instance):
     return monitoring_addon_enabled
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,unused-variable
 def aks_net_diagnostics(
     cmd,
     client,
@@ -3779,13 +3779,13 @@ def aks_net_diagnostics(
 ):
     """
     Run network diagnostics on an AKS cluster.
-    
+
     This command performs comprehensive network diagnostics including:
     - Cluster configuration analysis
     - Network connectivity checks
     - DNS resolution testing
     - Service endpoint validation
-    
+
     :param cmd: CLI command context
     :param client: Container service client
     :param resource_group_name: Resource group name
@@ -3799,21 +3799,22 @@ def aks_net_diagnostics(
         get_network_client,
         get_privatedns_client
     )
-    
+    from azure.cli.core.commands.client_factory import get_subscription_id
+
     # Get cluster information
     mc = client.get(resource_group_name, name)
-    
+
     if not mc:
         raise CLIError(f"Cluster '{name}' not found in resource group '{resource_group_name}'")
-    
+
     # Get subscription ID from cluster resource ID
-    from azure.cli.core.commands.client_factory import get_subscription_id
     subscription_id = get_subscription_id(cmd.cli_ctx)
-    
+
     # Create Azure SDK clients using CLI authentication
+    # These will be used in Phase 3.4 when orchestrator is integrated
     network_client = get_network_client(cmd.cli_ctx, subscription_id)
     privatedns_client = get_privatedns_client(cmd.cli_ctx, subscription_id)
-    
+
     # TODO Phase 3.4: Import and call the orchestrator from aks-net-diagnostics
     # For now, return basic cluster info as POC
     result = {
@@ -3830,11 +3831,10 @@ def aks_net_diagnostics(
         "status": "POC - Basic cluster info retrieved successfully",
         "message": "Phase 3.3 complete: Command handler created. Phase 3.4 will integrate full diagnostics."
     }
-    
+
     if json_report:
         return result
-    else:
-        # Print human-readable output
-        from azure.cli.core._output import AzOutputProducer
-        print(json.dumps(result, indent=2))
-        return None
+
+    # Print human-readable output
+    print(json.dumps(result, indent=2))
+    return None
