@@ -519,6 +519,7 @@ class NSGAnalyzer(BaseAnalyzer):
         parts = resource_id.split('/')
         result = {}
 
+        # Extract subscription and resource group
         for i, part in enumerate(parts):
             if part.lower() == 'subscriptions' and i + 1 < len(parts):
                 result['subscription'] = parts[i + 1]
@@ -526,21 +527,39 @@ class NSGAnalyzer(BaseAnalyzer):
                 result['resource_group'] = parts[i + 1]
             elif part.lower() == 'providers' and i + 1 < len(parts):
                 result['provider'] = parts[i + 1]
-            elif i > 0 and parts[i - 1].lower() not in ['subscriptions', 'resourcegroups', 'providers']:
-                # Resource type and name come in pairs after the provider
-                if i + 1 < len(parts) and '/' not in parts[i + 1]:
-                    # Check if this is a parent resource (VNet for subnet)
-                    if 'resource_name' not in result:
-                        result['parent_type'] = part
-                        result['parent_name'] = parts[i + 1]
-                    else:
-                        result['resource_type'] = part
-                        result['resource_name'] = parts[i + 1]
 
-        # For simple resources without parent (last type/name pair)
-        if 'resource_name' not in result and 'parent_name' in result:
-            result['resource_type'] = result.get('parent_type', '')
-            result['resource_name'] = result.get('parent_name', '')
+        # Extract resource types and names after provider
+        # Format: /providers/{provider}/{type1}/{name1}/{type2}/{name2}/...
+        provider_index = -1
+        for i, part in enumerate(parts):
+            if part.lower() == 'providers':
+                provider_index = i
+                break
+
+        if provider_index >= 0 and provider_index + 2 < len(parts):
+            # Skip provider namespace, start with first resource type/name pair
+            resource_parts = parts[provider_index + 2:]
+            
+            # Process resource type/name pairs
+            for i in range(0, len(resource_parts) - 1, 2):
+                resource_type = resource_parts[i]
+                resource_name = resource_parts[i + 1]
+                
+                # First pair is parent (e.g., virtualNetworks)
+                # Last pair is the actual resource (e.g., subnets)
+                if i == 0 and len(resource_parts) > 2:
+                    result['parent_type'] = resource_type
+                    result['parent_name'] = resource_name
+                elif i == len(resource_parts) - 2:
+                    result['resource_type'] = resource_type
+                    result['resource_name'] = resource_name
+
+            # Handle simple resources without parent (only one type/name pair)
+            if 'resource_name' not in result and 'parent_name' in result:
+                result['resource_type'] = result.get('parent_type', '')
+                result['resource_name'] = result.get('parent_name', '')
+                result.pop('parent_type', None)
+                result.pop('parent_name', None)
 
         return result
 
