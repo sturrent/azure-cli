@@ -261,16 +261,12 @@ class OutboundConnectivityAnalyzer:
             if mechanism == "loadBalancer" and effective_summary["load_balancer_ips"]:
                 for ip in effective_summary["load_balancer_ips"]:
                     self.logger.info("    Found outbound IP: %s", ip)
-            elif (
-                mechanism == "virtualAppliance"
-                and effective_summary["virtual_appliance_ips"]
-            ):
+            elif (mechanism == "virtualAppliance" and
+                  effective_summary["virtual_appliance_ips"]):
                 for ip in effective_summary["virtual_appliance_ips"]:
                     self.logger.info("    Virtual appliance IP: %s", ip)
-            elif (
-                mechanism == "managedNATGateway"
-                and effective_summary["load_balancer_ips"]
-            ):
+            elif (mechanism == "managedNATGateway" and
+                  effective_summary["load_balancer_ips"]):
                 for ip in effective_summary["load_balancer_ips"]:
                     self.logger.info("    NAT Gateway outbound IP: %s", ip)
 
