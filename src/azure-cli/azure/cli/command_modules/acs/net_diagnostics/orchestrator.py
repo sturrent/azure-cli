@@ -11,7 +11,7 @@ Adapted from aks-net-diagnostics tool (azure-sdk branch) for Azure CLI integrati
 import logging
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 def run_diagnostics(
@@ -29,7 +29,7 @@ def run_diagnostics(
 ) -> Dict[str, Any]:
     """
     Run comprehensive network diagnostics on an AKS cluster.
-    
+
     This function orchestrates all diagnostic modules to analyze:
     - Cluster configuration
     - VNet and subnet configuration
@@ -39,7 +39,7 @@ def run_diagnostics(
     - API server access
     - Connectivity tests (if probe_test enabled)
     - Misconfigurations
-    
+
     Args:
         aks_client: ContainerServiceClient for AKS operations
         network_client: NetworkManagementClient for network operations
@@ -52,22 +52,22 @@ def run_diagnostics(
         probe_test: Enable active connectivity checks (executes commands on nodes)
         json_report: Output results in JSON format
         logger: Optional logger instance
-        
+
     Returns:
         Dictionary containing complete diagnostic results
-        
+
     Raises:
         CLIError: If cluster not found or other validation errors
     """
     # Setup logger if not provided
     if logger is None:
         logger = _setup_logging()
-    
+
     logger.info("Starting AKS network diagnostics for cluster: %s", cluster_name)
-    
+
     # TODO Phase 3.4: Implementation
     # This is a POC stub that will be expanded with full diagnostic logic
-    
+
     # For now, return basic structure showing the orchestration worked
     result = {
         "cluster_name": cluster_name,
@@ -98,16 +98,16 @@ def run_diagnostics(
         "api_server_access_analysis": {},
         "api_probe_results": None
     }
-    
+
     logger.info("Diagnostic orchestration complete (POC mode)")
-    
+
     return result
 
 
 def _setup_logging() -> logging.Logger:
     """
     Configure logging with appropriate handlers and formatters.
-    
+
     Returns:
         Configured logger instance
     """
@@ -115,15 +115,15 @@ def _setup_logging() -> logging.Logger:
         fmt="%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
-    
+
     logger = logging.getLogger("aks_net_diagnostics")
     logger.propagate = False
-    
+
     if not logger.handlers:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
-    
+
     logger.setLevel(logging.INFO)
-    
+
     return logger
