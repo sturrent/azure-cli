@@ -60,6 +60,16 @@ def get_compute_client(cli_ctx, *_):
     return get_mgmt_service_client(cli_ctx, ResourceType.MGMT_COMPUTE)
 
 
+def get_network_client(cli_ctx, subscription_id=None):
+    return get_mgmt_service_client(cli_ctx, ResourceType.MGMT_NETWORK,
+                                   subscription_id=subscription_id)
+
+
+def get_privatedns_client(cli_ctx, subscription_id=None):
+    return get_mgmt_service_client(cli_ctx, ResourceType.MGMT_NETWORK_PRIVATEDNS,
+                                   subscription_id=subscription_id)
+
+
 def get_resource_groups_client(cli_ctx, subscription_id=None):
     return get_mgmt_service_client(cli_ctx, ResourceType.MGMT_RESOURCE_RESOURCES,
                                    subscription_id=subscription_id).resource_groups
