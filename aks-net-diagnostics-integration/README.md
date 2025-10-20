@@ -9,7 +9,7 @@ This directory contains the planning documents for integrating the **aks-net-dia
 2. **[planning/00-overview.md](./planning/00-overview.md)** - High-level overview
 3. **[planning/03-task-list.md](./planning/03-task-list.md)** - Task tracker with estimates
 4. **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** - Environment setup guide
-5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🔥 Latest progress (Phase 4: 65% complete - 3 analyzers done)
+5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🔥 Latest progress (Phase 4: 72% complete - 4 analyzers done)
 
 ### Additional Resources
 - **[planning/01-analysis.md](./planning/01-analysis.md)** - Detailed technical analysis
@@ -95,20 +95,23 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 - ✅ Phase 3: Authentication Adapter (COMPLETE - 100%)
 
 ### Latest Progress
-- ✅ **Phase 3 Complete** (October 20, 2025)
-  - Client factory functions added
-  - Command handler created
-  - Orchestrator stub implemented
+- ✅ **Phase 4.4d Complete** (October 20, 2025)
+  - Outbound Analyzer added (591 lines)
+  - Analyzes Load Balancer, NAT Gateway, and UDR outbound configuration
+  - Detects effective outbound path with UDR override detection
   - Perfect pylint score (10.00/10)
-  - All style checks passed
-  - 8 commits pushed successfully
+  - All style checks passed (pylint + flake8)
+  - 2 commits: 8cc97895fd, a61bb1f348
+- ✅ **4 of 7 analyzers complete** (72% of Phase 4)
+  - DNS, Route Table, API Server, Outbound analyzers ✅
+  - NSG analyzer next
 
 ### Estimated Timeline (POC Approach)
 - **Total Effort:** 25-35 hours (simplified POC approach)
-- **Completed:** ~10 hours (Phases 1-3)
-- **Remaining:** ~15-25 hours
+- **Completed:** ~13 hours (Phases 1-4 partial)
+- **Remaining:** ~12-22 hours
 - **Integration Complexity:** Medium (tool already uses Azure SDK)
-- **Primary Work:** Copy diagnostic modules, register command, parameters, testing
+- **Primary Work:** Complete remaining analyzers, report generator, testing
 - **Deferred:** Output formatting refactoring (post-POC)
 
 ### Progress Checklist
@@ -141,22 +144,20 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - [x] Phase 3.3: Create command handler in custom.py ✅
   - [x] Phase 3.4: Create orchestrator stub ✅
   - [x] Phase 3.5: Code quality perfection (10.00/10 pylint) ✅
-- [ ] **Phase 4: Copy Diagnostic Modules** ⏳ IN PROGRESS (50% complete - October 2025)
+- [ ] **Phase 4: Copy Diagnostic Modules** ⏳ IN PROGRESS (72% complete - October 2025)
   - [x] Phase 4.1: Foundation modules (_version, exceptions, models, validators) ✅
   - [x] Phase 4.2: Base analyzer class ✅
   - [x] Phase 4.3: Cluster data collector ✅
-  - [ ] Phase 4.4: Analyzers (0 of 7) ⏳ STARTING
-    - [ ] dns_analyzer.py
-    - [ ] route_table_analyzer.py
-    - [ ] api_server_analyzer.py
-    - [ ] outbound_analyzer.py
-    - [ ] nsg_analyzer.py
+  - [ ] Phase 4.4: Analyzers (4 of 7 complete - 57%) ⏳ IN PROGRESS
+    - [x] dns_analyzer.py ✅
+    - [x] route_table_analyzer.py ✅
+    - [x] api_server_analyzer.py ✅
+    - [x] outbound_analyzer.py ✅
+    - [ ] nsg_analyzer.py ⏳ NEXT
     - [ ] connectivity_tester.py
     - [ ] misconfiguration_analyzer.py
   - [ ] Phase 4.5: Report generator
   - [ ] Phase 4.6: Update orchestrator with real logic
-  - [x] Phase 3.3: Create command handler function ✅
-  - [ ] Phase 3.4: Adapt orchestrator from aks-net-diagnostics ⏳ NEXT
 
 ## 🛠️ Development Setup
 
@@ -278,12 +279,12 @@ See [05-questions-and-decisions.md](./05-questions-and-decisions.md) for:
 |-------|----------------|--------|
 | Phase 1: Planning | 5 hours | ✅ COMPLETE |
 | Phase 2: Development Environment Setup | 15 minutes | ✅ COMPLETE |
-| Phase 3: Authentication Adapter | 3-4 hours | ⏳ IN PROGRESS |
-| Phase 4: Integration Implementation | 8-12 hours | 🔴 Not Started |
-| Phase 5: Testing & Validation | 8-12 hours | 🔴 Not Started |
-| Phase 6: Documentation & Polish | 4-6 hours | 🔴 Not Started |
-| Phase 7: Review & Merge | 4-8 hours | 🔴 Not Started |
-| **TOTAL (POC)** | **25-35 hours** | |
+| Phase 3: Authentication Adapter | 3-4 hours | ✅ COMPLETE |
+| Phase 4: Copy Diagnostic Modules | 8-12 hours | ⏳ IN PROGRESS (72% complete) |
+| Phase 5: Register Command & Parameters | 2-3 hours | 🔴 Not Started |
+| Phase 6: Integration Testing | 4-6 hours | 🔴 Not Started |
+| Phase 7: Documentation & Polish | 2-4 hours | 🔴 Not Started |
+| **TOTAL (POC)** | **25-35 hours** | **~13 hours completed** |
 
 **Note:** Using POC approach - deferring output formatting refactoring. Timeline assumes working on this as a focused effort. Calendar time will vary based on availability and review cycles.
 
@@ -312,7 +313,7 @@ This is an integration project. If you want to help:
 
 ---
 
-**Last Updated:** October 19, 2025  
-**Current Focus:** Phase 3 - Authentication Adapter  
-**Next Milestone:** Review azure_sdk_client.py and prototype CLI authentication adaptation  
+**Last Updated:** October 20, 2025  
+**Current Focus:** Phase 4 - Copy Diagnostic Modules (72% complete - 4 of 7 analyzers done)  
+**Next Milestone:** Complete remaining analyzers (NSG, Connectivity Tester, Misconfiguration)  
 **Environment:** Python 3.10.12, Azure CLI 2.78.0 (dev mode), azdev 0.2.7
