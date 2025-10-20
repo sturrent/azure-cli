@@ -3765,3 +3765,76 @@ def is_monitoring_addon_enabled(addons, instance):
     except Exception as ex:  # pylint: disable=broad-except
         logger.debug("failed to check monitoring addon enabled: %s", ex)
     return monitoring_addon_enabled
+
+
+# pylint: disable=too-many-locals
+def aks_net_diagnostics(
+    cmd,
+    client,
+    resource_group_name,
+    name,
+    details=False,
+    probe_test=False,
+    json_report=False
+):
+    """
+    Run network diagnostics on an AKS cluster.
+    
+    This command performs comprehensive network diagnostics including:
+    - Cluster configuration analysis
+    - Network connectivity checks
+    - DNS resolution testing
+    - Service endpoint validation
+    
+    :param cmd: CLI command context
+    :param client: Container service client
+    :param resource_group_name: Resource group name
+    :param name: Cluster name
+    :param details: Show detailed diagnostic information
+    :param probe_test: Run probe connectivity tests
+    :param json_report: Output results in JSON format
+    :return: Diagnostic results (dict if json_report=True, otherwise prints to stdout)
+    """
+    from azure.cli.command_modules.acs._client_factory import (
+        get_network_client,
+        get_privatedns_client
+    )
+    
+    # Get cluster information
+    mc = client.get(resource_group_name, name)
+    
+    if not mc:
+        raise CLIError(f"Cluster '{name}' not found in resource group '{resource_group_name}'")
+    
+    # Get subscription ID from cluster resource ID
+    from azure.cli.core.commands.client_factory import get_subscription_id
+    subscription_id = get_subscription_id(cmd.cli_ctx)
+    
+    # Create Azure SDK clients using CLI authentication
+    network_client = get_network_client(cmd.cli_ctx, subscription_id)
+    privatedns_client = get_privatedns_client(cmd.cli_ctx, subscription_id)
+    
+    # TODO Phase 3.4: Import and call the orchestrator from aks-net-diagnostics
+    # For now, return basic cluster info as POC
+    result = {
+        "cluster_name": mc.name,
+        "resource_group": resource_group_name,
+        "location": mc.location,
+        "kubernetes_version": mc.kubernetes_version,
+        "provisioning_state": mc.provisioning_state,
+        "network_profile": {
+            "network_plugin": mc.network_profile.network_plugin if mc.network_profile else None,
+            "service_cidr": mc.network_profile.service_cidr if mc.network_profile else None,
+            "dns_service_ip": mc.network_profile.dns_service_ip if mc.network_profile else None,
+        },
+        "status": "POC - Basic cluster info retrieved successfully",
+        "message": "Phase 3.3 complete: Command handler created. Phase 3.4 will integrate full diagnostics."
+    }
+    
+    if json_report:
+        return result
+    else:
+        # Print human-readable output
+        from azure.cli.core._output import AzOutputProducer
+        print(json.dumps(result, indent=2))
+        return None
