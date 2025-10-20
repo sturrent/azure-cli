@@ -22,10 +22,10 @@ from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 def _to_dict(obj: Any) -> Any:
     """
     Convert Azure SDK object to dictionary recursively.
-    
+
     Args:
         obj: Azure SDK object or primitive type
-        
+
     Returns:
         Dictionary representation or primitive value
     """
