@@ -73,9 +73,17 @@
   - progress/ - Phase reports
   - guides/ - How-to guides
 
+### 2.4 Add Missing Dependency ✅
+- [x] Identified azure-mgmt-network as missing
+- [x] Added `azure-mgmt-network~=25.0.0` to `src/azure-cli/setup.py`
+- [x] Reinstalled Azure CLI: `pip install -e src/azure-cli/`
+- [x] Verified installation: `python -c "import azure.mgmt.network"`
+- [x] Confirmed version: azure-mgmt-network 25.0.0
+- [x] Updated .gitignore with .venv entry
+
 **Status:** ✅ Complete
 
-**Time Spent:** ~15 minutes
+**Time Spent:** ~20 minutes
 
 **Note:** POC approach - keeping existing output format to prove feasibility first. Output formatting refinement will be addressed after POC is working.
 
