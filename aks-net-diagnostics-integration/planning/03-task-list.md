@@ -186,7 +186,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 4: Copy Diagnostic Modules ⏳ IN PROGRESS (50% complete)
+## Phase 4: Copy Diagnostic Modules ⏳ IN PROGRESS (65% complete)
 
 ### 4.1 Copy Foundation Modules ✅ COMPLETE
 - [x] Copy `__version__.py` → `_version.py`
@@ -228,26 +228,66 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 **Lines Added:** 306 lines  
 **Code Quality:** 10.00/10 pylint, flake8 passed
 
-### 4.4 Copy Analyzers ⏳ IN PROGRESS (0 of 7 complete)
-- [ ] Copy `dns_analyzer.py` (368 lines) - Private DNS analysis
-- [ ] Copy `route_table_analyzer.py` (407 lines) - Route table analysis
-- [ ] Copy `api_server_analyzer.py` (414 lines) - API server access
+### 4.4 Copy Analyzers ⏳ IN PROGRESS (3 of 7 complete - 43%)
+
+#### 4.4a DNS Analyzer ✅ COMPLETE
+- [x] Copy `dns_analyzer.py` (341 lines adapted) - Private DNS analysis
+- [x] Inherits from BaseAnalyzer
+- [x] Removed azure_sdk_client dependency
+- [x] Uses clients dict with network_client access
+- [x] Manual resource ID parsing (no parse_resource_id helper)
+- [x] Changed dict keys to snake_case
+- [x] Uses self.add_finding() from BaseAnalyzer
+
+**Status:** ✅ Complete  
+**Time Spent:** 30 minutes  
+**Commit:** `b1fcee9c53`  
+**Code Quality:** 10.00/10 pylint score
+
+#### 4.4b Route Table Analyzer ✅ COMPLETE
+- [x] Copy `route_table_analyzer.py` (407 lines adapted) - Route table analysis
+- [x] Standalone analyzer (doesn't inherit from BaseAnalyzer)
+- [x] Accepts agent_pools, network_client, logger directly
+- [x] Manual resource ID parsing for subnets and route tables
+- [x] Added _to_dict() helper function
+- [x] Changed all dict keys to snake_case
+- [x] Added pylint disable for too-few-public-methods (justified - single entry point)
+
+**Status:** ✅ Complete  
+**Time Spent:** 35 minutes  
+**Commit:** `e40a3ddf70`  
+**Code Quality:** 10.00/10 pylint score
+
+#### 4.4c API Server Analyzer ✅ COMPLETE
+- [x] Copy `api_server_analyzer.py` (464 lines adapted) - API server access
+- [x] Analyzes authorized IP ranges and private cluster settings
+- [x] Validates security configurations
+- [x] Detects UDR overrides affecting Load Balancer outbound
+- [x] Checks if cluster outbound IPs are in authorized ranges
+- [x] Provides security recommendations
+- [x] Optional logger parameter
+- [x] Fixed line-too-long issues (split long strings)
+- [x] Added pylint disable for too-few-public-methods
+
+**Status:** ✅ Complete  
+**Time Spent:** 40 minutes  
+**Commit:** `d3eebda04e`  
+**Code Quality:** 10.00/10 pylint score
+
+#### 4.4d Outbound Analyzer ⏳ NEXT
 - [ ] Copy `outbound_analyzer.py` (509 lines) - Outbound connectivity
+
+#### 4.4e NSG Analyzer
 - [ ] Copy `nsg_analyzer.py` (510 lines) - NSG analysis
+
+#### 4.4f Connectivity Tester
 - [ ] Copy `connectivity_tester.py` (615 lines) - Connectivity probing
+
+#### 4.4g Misconfiguration Analyzer
 - [ ] Copy `misconfiguration_analyzer.py` (721 lines) - Misconfiguration detection
 
-**Estimated Time:** 2-3 hours  
+**Estimated Time:** 4-5 hours total (2-3 hours remaining)  
 **Strategy:** One analyzer at a time, smallest to largest
-  - [ ] Update imports
-  - [ ] Update constructor to accept SDKClient instead of AzureSDKClient
-- [ ] Copy `nsg_analyzer.py` → `analyzers/nsg_analyzer.py`
-  - [ ] Update imports
-  - [ ] Verify works with adapted SDK client
-- [ ] Copy `dns_analyzer.py` → `analyzers/dns_analyzer.py`
-  - [ ] Update imports only
-- [ ] Copy `route_table_analyzer.py` → `analyzers/route_table_analyzer.py`
-  - [ ] Update imports only
 - [ ] Copy `api_server_analyzer.py` → `analyzers/api_server_analyzer.py`
   - [ ] Update imports only
 - [ ] Copy `connectivity_tester.py` → `analyzers/connectivity_tester.py`

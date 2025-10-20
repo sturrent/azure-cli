@@ -9,7 +9,7 @@ This directory contains the planning documents for integrating the **aks-net-dia
 2. **[planning/00-overview.md](./planning/00-overview.md)** - High-level overview
 3. **[planning/03-task-list.md](./planning/03-task-list.md)** - Task tracker with estimates
 4. **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** - Environment setup guide
-5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🔥 Latest progress (Phase 4: 50% complete)
+5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🔥 Latest progress (Phase 4: 65% complete - 3 analyzers done)
 
 ### Additional Resources
 - **[planning/01-analysis.md](./planning/01-analysis.md)** - Detailed technical analysis
