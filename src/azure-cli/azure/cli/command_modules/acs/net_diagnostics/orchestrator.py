@@ -37,9 +37,11 @@ from azure.cli.command_modules.acs.net_diagnostics.report_generator import (
 
 def run_diagnostics(  # pylint: disable=too-many-locals
     aks_client,
+    agent_pools_client,
     network_client,
     compute_client,
     privatedns_client,
+    credential,
     resource_group_name: str,
     cluster_name: str,
     subscription_id: str,
@@ -63,9 +65,11 @@ def run_diagnostics(  # pylint: disable=too-many-locals
 
     Args:
         aks_client: ContainerServiceClient for AKS operations
+        agent_pools_client: AgentPoolsOperations for agent pool operations
         network_client: NetworkManagementClient for network operations
         compute_client: ComputeManagementClient for VMSS operations
         privatedns_client: PrivateDnsManagementClient for DNS operations
+        credential: Azure credential for cross-subscription scenarios
         resource_group_name: Resource group name
         cluster_name: AKS cluster name
         subscription_id: Azure subscription ID
@@ -91,7 +95,9 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         "aks_client": aks_client,
         "network_client": network_client,
         "compute_client": compute_client,
-        "privatedns_client": privatedns_client
+        "privatedns_client": privatedns_client,
+        "subscription_id": subscription_id,
+        "credential": credential
     }
 
     # Initialize result containers
@@ -111,6 +117,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     logger.info("[1/8] Collecting cluster information...")
     collector = ClusterDataCollector(
         aks_client=aks_client,
+        agent_pools_client=agent_pools_client,
         network_client=network_client,
         compute_client=compute_client,
         logger=logger
@@ -139,7 +146,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
 
     # Phase 4: Analyze VMSS configuration
     logger.info("[4/8] Analyzing VMSS configuration...")
-    vmss_analysis = collector.collect_vmss_info(agent_pools)
+    vmss_analysis = collector.collect_vmss_info(cluster_info)
 
     # Phase 5: Analyze NSG configuration
     logger.info("[5/8] Analyzing Network Security Groups...")
@@ -154,11 +161,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Phase 6: Analyze Private DNS configuration
     logger.info("[6/8] Analyzing Private DNS configuration...")
     dns_analyzer = DNSAnalyzer(clients=clients, cluster_info=cluster_info)
-    private_dns_analysis = dns_analyzer.analyze(
-        cluster_info,
-        resource_group_name,
-        subscription_id
-    )
+    private_dns_analysis = dns_analyzer.analyze()
 
     # Phase 7: Analyze API server access
     logger.info("[7/8] Analyzing API server access configuration...")
