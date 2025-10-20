@@ -9,7 +9,7 @@ This directory contains the planning documents for integrating the **aks-net-dia
 2. **[planning/00-overview.md](./planning/00-overview.md)** - High-level overview
 3. **[planning/03-task-list.md](./planning/03-task-list.md)** - Task tracker with estimates
 4. **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** - Environment setup guide
-5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🔥 Latest progress (Phase 4: 72% complete - 4 analyzers done)
+5. **[progress/PHASE4-PROGRESS.md](./progress/PHASE4-PROGRESS.md)** - 🔥 Latest progress (Phase 4: 86% complete - 6 analyzers done)
 
 ### Additional Resources
 - **[planning/01-analysis.md](./planning/01-analysis.md)** - Detailed technical analysis
@@ -102,16 +102,31 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - Perfect pylint score (10.00/10)
   - All style checks passed (pylint + flake8)
   - 2 commits: 8cc97895fd, a61bb1f348
-- ✅ **4 of 7 analyzers complete** (72% of Phase 4)
-  - DNS, Route Table, API Server, Outbound analyzers ✅
-  - NSG analyzer next
+- ✅ **NSG Analyzer Complete** (October 20, 2025)
+  - Analyzes Network Security Groups on subnets and NICs
+  - Checks NSG compliance with AKS requirements
+  - Detects rules blocking inter-node communication
+  - Validates outbound rules for AKS management traffic
+  - Perfect pylint score (10.00/10)
+  - Commit: 4dd81fdab7
+- ✅ **Connectivity Tester Complete** (October 20, 2025)
+  - Active connectivity probing from VMSS instances
+  - API server reachability testing (HTTP/DNS)
+  - Internet connectivity validation (MCR)
+  - DNS resolution with private IP validation
+  - Test dependency tracking and skip logic
+  - Perfect pylint score (10.00/10) on first attempt
+  - Commit: 2b113d902b
+- ✅ **6 of 7 analyzers complete** (86% of Phase 4)
+  - DNS, Route Table, API Server, Outbound, NSG, Connectivity analyzers ✅
+  - Misconfiguration analyzer next (final analyzer)
 
 ### Estimated Timeline (POC Approach)
 - **Total Effort:** 25-35 hours (simplified POC approach)
-- **Completed:** ~13 hours (Phases 1-4 partial)
-- **Remaining:** ~12-22 hours
+- **Completed:** ~14.5 hours (Phases 1-4 partial)
+- **Remaining:** ~10.5-20.5 hours
 - **Integration Complexity:** Medium (tool already uses Azure SDK)
-- **Primary Work:** Complete remaining analyzers, report generator, testing
+- **Primary Work:** Complete final analyzer, report generator, orchestrator, testing
 - **Deferred:** Output formatting refactoring (post-POC)
 
 ### Progress Checklist
@@ -144,18 +159,18 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - [x] Phase 3.3: Create command handler in custom.py ✅
   - [x] Phase 3.4: Create orchestrator stub ✅
   - [x] Phase 3.5: Code quality perfection (10.00/10 pylint) ✅
-- [ ] **Phase 4: Copy Diagnostic Modules** ⏳ IN PROGRESS (72% complete - October 2025)
+- [ ] **Phase 4: Copy Diagnostic Modules** ⏳ IN PROGRESS (86% complete - October 2025)
   - [x] Phase 4.1: Foundation modules (_version, exceptions, models, validators) ✅
   - [x] Phase 4.2: Base analyzer class ✅
   - [x] Phase 4.3: Cluster data collector ✅
-  - [ ] Phase 4.4: Analyzers (4 of 7 complete - 57%) ⏳ IN PROGRESS
+  - [ ] Phase 4.4: Analyzers (6 of 7 complete - 86%) ⏳ IN PROGRESS
     - [x] dns_analyzer.py ✅
     - [x] route_table_analyzer.py ✅
     - [x] api_server_analyzer.py ✅
     - [x] outbound_analyzer.py ✅
-    - [ ] nsg_analyzer.py ⏳ NEXT
-    - [ ] connectivity_tester.py
-    - [ ] misconfiguration_analyzer.py
+    - [x] nsg_analyzer.py ✅
+    - [x] connectivity_tester.py ✅
+    - [ ] misconfiguration_analyzer.py ⏳ NEXT
   - [ ] Phase 4.5: Report generator
   - [ ] Phase 4.6: Update orchestrator with real logic
 
