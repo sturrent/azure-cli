@@ -89,9 +89,9 @@
 
 ---
 
-## Phase 3: Authentication Adapter ⏳ (Current)
+## Phase 3: Authentication Adapter ⏳ (3 of 4 sub-phases complete - 75%)
 
-### 3.1 Review Source Code ✅
+### 3.1 Review Source Code ✅ COMPLETE
 - [x] Review `azure_sdk_client.py` implementation in detail
 - [x] Review CLI's `_client_factory.py` pattern
 - [x] Review CLI's `get_mgmt_service_client()` function
@@ -105,34 +105,63 @@
 - [x] Create comprehensive analysis document
 - [x] Decide on implementation approach: **CLI-Style Client Factories**
 
-**Status:** ✅ Complete
-
-**Time Spent:** 1 hour
-
+**Status:** ✅ Complete  
+**Time Spent:** 45 minutes  
+**Commit:** `13308bb8e4`  
 **Documentation:**
 - Created `PHASE3-AUTHENTICATION-ANALYSIS.md` (400+ lines technical deep-dive)
 - Created `PHASE3-SUMMARY.md` (executive summary with implementation plan)
 
-### 3.2 Adapt Azure SDK Client for CLI Authentication
+### 3.2a Add Client Factory Functions ✅ COMPLETE
+- [x] Add `get_network_client()` to `_client_factory.py`
+- [x] Add `get_privatedns_client()` to `_client_factory.py`
+- [x] Follow existing Azure CLI client factory pattern
+- [x] Use `get_mgmt_service_client()` for authentication
+- [x] Support optional `subscription_id` parameter
+- [x] Create comprehensive test suite
+- [x] Verify all tests pass
+
+**Status:** ✅ Complete  
+**Time Spent:** 45 minutes (including testing)  
+**Commit:** `8947250ce8`  
+**Lines Changed:** 10 lines added to `_client_factory.py`  
+**Testing:** All 5 test categories passed ✅
+
+### 3.3 Create Command Handler Function ✅ COMPLETE
+- [x] Create `aks_net_diagnostics()` function in `custom.py`
+- [x] Accept required parameters: `cmd`, `client`, `resource_group_name`, `name`, `details`, `probe_test`, `json_report`
+- [x] Use `get_network_client()` and `get_privatedns_client()` from Phase 3.2a
+- [x] Retrieve cluster information using container service client
+- [x] Get subscription ID from CLI context
+- [x] Create Azure SDK clients with CLI authentication
+- [x] Return POC output (basic cluster info)
+- [x] Verify syntax and imports
+- [x] Pass pre-commit hook validation
+
+**Status:** ✅ Complete  
+**Time Spent:** 30 minutes  
+**Commit:** `161fe57f9f`  
+**Lines Changed:** 73 lines added to `custom.py`  
+**Pattern:** Follows existing AKS command patterns (e.g., `aks_check_acr`)
+
+### 3.4 Adapt Orchestrator from aks-net-diagnostics ⏳ NEXT
 **Priority: HIGH - Critical for integration**
 
-The azure-sdk branch has `azure_sdk_client.py` that uses Azure SDK with `DefaultAzureCredential`.
-We need to adapt it to use CLI's authentication via `cmd.cli_ctx`.
+Copy and adapt the orchestrator to work with CLI authentication and command handler.
 
 - [ ] Create `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/` directory
-- [ ] Copy `azure_sdk_client.py` → `net_diagnostics/sdk_client.py`
-- [ ] Replace `DefaultAzureCredential()` with CLI's `cmd.cli_ctx`
-- [ ] Update `__init__(self, subscription_id)` → `__init__(self, cmd)`
-- [ ] Replace `.aks_client` property to use `cf_container_services(cmd.cli_ctx)`
-- [ ] Replace `.network_client` property to use `get_mgmt_service_client()`
-- [ ] Replace `.compute_client` property to use `get_mgmt_service_client()`
-- [ ] Replace `.privatedns_client` property to use `get_mgmt_service_client()`
-- [ ] Update `get_cluster()` method to use new client initialization
-- [ ] Keep `parse_resource_id()` utility method as-is
-- [ ] Add type hints and docstrings
-- [ ] Test basic functionality
+- [ ] Create `net_diagnostics/__init__.py`
+- [ ] Copy orchestrator logic from `aks-net-diagnostics.py` → `net_diagnostics/orchestrator.py`
+- [ ] Adapt `run_diagnostics()` function:
+  - [ ] Accept pre-created clients as parameters (from command handler)
+  - [ ] Remove `DefaultAzureCredential` initialization
+  - [ ] Remove argument parsing (CLI handles this)
+  - [ ] Keep all diagnostic logic intact
+- [ ] Update `custom.py` to import and call orchestrator
+- [ ] Test basic end-to-end flow
+- [ ] Verify POC functionality works
 
-**Estimated Time:** 3-4 hours
+**Estimated Time:** 1-2 hours
 
 ---
 
