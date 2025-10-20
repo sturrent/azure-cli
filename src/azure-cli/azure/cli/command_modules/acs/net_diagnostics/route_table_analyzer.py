@@ -92,7 +92,8 @@ class RouteTableAnalyzer:  # pylint: disable=too-few-public-methods
                 route_table = subnet_info.get("route_table")
                 if route_table and route_table.get("id"):
                     route_table_id = route_table["id"]
-                    self.logger.info("    Found route table: %s", route_table_id)
+                    route_table_name = route_table_id.split("/")[-1] if route_table_id else "unknown"
+                    self.logger.warning("  Found route table: %s", route_table_name)
 
                     # Get route table details
                     rt_analysis = self._analyze_route_table(route_table_id, subnet_id)

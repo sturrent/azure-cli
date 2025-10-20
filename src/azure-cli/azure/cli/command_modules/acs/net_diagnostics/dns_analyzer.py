@@ -93,7 +93,7 @@ class DNSAnalyzer(BaseAnalyzer):
                 "analysis": "Custom private DNS zone configured",
             }
 
-            self.logger.info("  Custom private DNS zone: %s", private_dns_zone)
+            self.logger.warning("  Custom private DNS zone: %s", private_dns_zone)
 
             # Add informational finding
             self.add_finding(
@@ -113,7 +113,7 @@ class DNSAnalyzer(BaseAnalyzer):
                 "analysis": "System-managed private DNS zone",
             }
 
-            self.logger.info("  System-managed private DNS zone")
+            self.logger.warning("  System-managed private DNS zone")
 
     def _analyze_vnet_dns_servers(self) -> None:
         """Analyze VNet DNS server configuration"""
@@ -161,11 +161,11 @@ class DNSAnalyzer(BaseAnalyzer):
 
             if not dns_servers:
                 # Using Azure default DNS
-                self.logger.info("  VNet '%s' using Azure default DNS (168.63.129.16)", vnet_name)
+                self.logger.warning("  Using Azure default DNS (168.63.129.16)")
                 self.dns_analysis["vnet_dns_config"] = "azure-default"
                 return
 
-            self.logger.info("  VNet '%s' has custom DNS servers: %s", vnet_name, ", ".join(dns_servers))
+            self.logger.warning("  Custom DNS servers configured: %s", ", ".join(dns_servers))
             self.dns_analysis["vnet_dns_config"] = "custom"
 
             # Check for potential issues with custom DNS
