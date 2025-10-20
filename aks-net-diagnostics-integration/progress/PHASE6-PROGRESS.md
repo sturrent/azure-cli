@@ -2,7 +2,7 @@
 
 **Status:** 🟡 IN PROGRESS  
 **Started:** October 20, 2025  
-**Last Updated:** October 20, 2025 20:50 UTC
+**Last Updated:** October 20, 2025 21:30 UTC
 
 ---
 
@@ -162,8 +162,8 @@ Tip: Use --details flag for detailed analysis
 
 ### Bugs Found and Fixed During Test 1.1
 
-**Total Bugs:** 14  
-**Bugs Fixed:** 14  
+**Total Bugs:** 15  
+**Bugs Fixed:** 15  
 **Success Rate:** 100%
 
 #### Bug #1: Client Architecture - managed_clusters Attribute
@@ -270,6 +270,30 @@ Tip: Use --details flag for detailed analysis
 - **Status:** ✅ FIXED
 - **Commit:** 2e904603de
 
+#### Bug #15: Findings Not Appearing in Summary Report
+- **Severity:** High
+- **Location:** `orchestrator.py` Phase 9-10, report_generator.py
+- **Symptom:** DNS custom server WARNING finding logged during execution but missing from Findings Summary
+- **Observed:**
+  ```
+  [6/8] Analyzing Private DNS configuration...
+  WARNING: VNet is using custom DNS servers (1.1.1.1, 8.8.8.8) which may impact CoreDNS functionality
+  
+  **Findings Summary:**
+  - [OK] No critical issues detected  ← Finding missing!
+  ```
+- **Root Cause:** Individual analyzers (DNS, NSG) create Finding objects via `add_finding()`, stored in `analyzer.findings`, but only misconfiguration_analyzer findings passed to report generator
+- **Impact:** Users don't see DNS warnings, NSG warnings, or other analyzer findings in summary
+- **Fix:** 
+  1. Collect findings from dns_analyzer and nsg_analyzer after analysis
+  2. Convert Finding objects to dicts using `.to_dict()` method
+  3. Merge with misconfiguration analyzer findings before passing to report generator
+- **Testing:**
+  - aks-dns-ex1: DNS custom server warning now appears ✅
+  - aks-overlay: NSG warnings still appear correctly ✅
+- **Status:** ✅ FIXED
+- **Commit:** 17c7a034a0
+
 ---
 
 ## Git Commits
@@ -293,14 +317,28 @@ Tip: Use --details flag for detailed analysis
    - Fixed bug #14 (NSG resource ID parsing)
    - 1 file changed, 34 insertions(+), 15 deletions(-)
 
-**Total Commits:** 4  
-**Total Changes:** ~600 lines added/modified
+5. **64ce9d1320** - "Phase 6: Update progress documentation with bugs 12-14"
+   - Updated PHASE6-PROGRESS.md with recent fixes
+   - 1 file changed, 149 insertions(+), 39 deletions(-)
+
+6. **32b0751eaf** - "Phase 6: Improve default output visibility for key discoveries"
+   - Changed logger.info() → logger.warning() for outbound IPs, route tables, DNS config
+   - Matches NSG analyzer behavior for consistent UX
+   - 3 files changed, 9 insertions(+), 8 deletions(-)
+
+7. **17c7a034a0** - "Phase 6: Fix findings not appearing in summary report (Bug #15)"
+   - Fixed bug #15 (findings from DNS/NSG analyzers missing from summary)
+   - Collect and convert Finding objects from individual analyzers
+   - 1 file changed, 13 insertions(+)
+
+**Total Commits:** 7  
+**Total Changes:** ~800 lines added/modified
 
 ---
 
 ## Files Modified
 
-**Total Files Changed:** 6 unique files
+**Total Files Changed:** 8 unique files
 
 1. **_client_factory.py**
    - Rewrote `get_network_client()` function
@@ -325,7 +363,8 @@ Tip: Use --details flag for detailed analysis
    - Fixed clients dict
    - Fixed analyzer method calls
    - Changed logger.info() to logger.warning() for progress visibility
-   - ~35 lines changed
+   - Added findings collection from dns_analyzer and nsg_analyzer
+   - ~50 lines changed
 
 5. **nsg_analyzer.py**
    - Removed/re-added logger parameter properly
@@ -338,9 +377,14 @@ Tip: Use --details flag for detailed analysis
 
 7. **dns_analyzer.py**
    - Added logger parameter support
-   - ~3 lines changed
+   - Changed logger.info() to logger.warning() for key discoveries
+   - ~6 lines changed
 
-**Total Lines Changed:** ~141 insertions/modifications across all fixes
+8. **outbound_analyzer.py, route_table_analyzer.py**
+   - Changed logger.info() to logger.warning() for improved visibility
+   - ~6 lines changed total
+
+**Total Lines Changed:** ~165 insertions/modifications across all fixes
 
 ---
 
