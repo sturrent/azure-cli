@@ -40,17 +40,26 @@ class RouteTableAnalyzer:  # pylint: disable=too-few-public-methods
     potential connectivity issues and assess the impact of routes on cluster operations.
     """
 
-    def __init__(self, agent_pools: List[Dict[str, Any]], network_client, logger=None):
+    def __init__(self, agent_pools: List[Dict[str, Any]], network_client=None,
+                 vmss_analysis: List[Dict[str, Any]] = None, logger=None):
         """
         Initialize the RouteTableAnalyzer.
 
         Args:
             agent_pools: List of AKS agent pool configurations
-            network_client: Authenticated NetworkManagementClient
+            network_client: Authenticated NetworkManagementClient (can be dict for backward compatibility)
+            vmss_analysis: Optional list of VMSS network configurations (for managed VNets)
             logger: Optional logger instance
         """
         self.agent_pools = agent_pools
-        self.network_client = network_client
+        self.vmss_analysis = vmss_analysis or []
+        
+        # Handle backward compatibility: network_client might be a dict of clients
+        if isinstance(network_client, dict):
+            self.network_client = network_client.get('network_client')
+        else:
+            self.network_client = network_client
+            
         self.logger = logger or __import__('logging').getLogger(__name__)
 
     def analyze(self) -> Dict[str, Any]:
@@ -112,13 +121,53 @@ class RouteTableAnalyzer:  # pylint: disable=too-few-public-methods
         return udr_analysis
 
     def _get_unique_subnet_ids(self) -> Set[str]:
-        """Extract unique subnet IDs from agent pools"""
+        """
+        Extract unique subnet IDs from agent pools and VMSS network profiles.
+        
+        For clusters with custom VNets, subnet IDs are available in agent pool configurations.
+        For clusters with AKS-managed VNets, subnet IDs are only available in VMSS network profiles.
+        This method supports both scenarios.
+        """
         subnet_ids = set()
+        
+        # Try to get subnet IDs from agent pools (customer-provided VNets)
         for pool in self.agent_pools:
             # Try both camelCase and snake_case
             subnet_id = pool.get("vnetSubnetId") or pool.get("vnet_subnet_id")
             if subnet_id and subnet_id != "null":
                 subnet_ids.add(subnet_id)
+                self.logger.info("    Found subnet from agent pool: %s", subnet_id)
+        
+        # If no subnets found in agent pools, extract from VMSS (AKS-managed VNets)
+        if not subnet_ids and self.vmss_analysis:
+            self.logger.info("    No subnets in agent pools, checking VMSS network configuration...")
+            
+            for vmss in self.vmss_analysis:
+                # Handle case where vmss might not be a dict
+                if not isinstance(vmss, dict):
+                    self.logger.warning("    Unexpected VMSS data type: %s", type(vmss))
+                    continue
+                
+                # Extract subnet ID from VMSS network profile
+                # Path: virtual_machine_profile.network_profile.network_interface_configurations[].ip_configurations[].subnet.id
+                vm_profile = vmss.get("virtual_machine_profile", {})
+                network_profile = vm_profile.get("network_profile", {})
+                nic_configs = network_profile.get("network_interface_configurations", [])
+                
+                for nic_config in nic_configs:
+                    ip_configs = nic_config.get("ip_configurations", [])
+                    for ip_config in ip_configs:
+                        subnet = ip_config.get("subnet", {})
+                        subnet_id = subnet.get("id")
+                        if subnet_id:
+                            subnet_ids.add(subnet_id)
+                            # Log only once per unique subnet
+                            if len(subnet_ids) == 1 or subnet_id not in subnet_ids:
+                                self.logger.info("    Found subnet from VMSS network profile: %s", subnet_id)
+                            break  # Only need one IP config per NIC
+                    if subnet_ids:
+                        break  # Only need one NIC
+        
         return subnet_ids
 
     def _get_subnet_details(self, subnet_id: str) -> Optional[Dict[str, Any]]:

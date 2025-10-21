@@ -137,10 +137,15 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     logger.warning("[2/9] Analyzing VNet configuration...")
     vnets_analysis = collector.collect_vnet_info(agent_pools)
 
+    # Collect VMSS configuration (needed for Route Table analysis)
+    logger.warning("  Collecting VMSS network configuration...")
+    vmss_analysis = collector.collect_vmss_info(cluster_info)
+
     # Phase 3: Analyze User Defined Routes (UDRs)
     logger.warning("[3/9] Analyzing Route Tables (UDRs)...")
     route_table_analyzer = RouteTableAnalyzer(
         agent_pools=agent_pools,
+        vmss_analysis=vmss_analysis,
         network_client=clients.get('network_client'),
         logger=logger
     )
@@ -160,11 +165,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Add UDR analysis to outbound analysis (expected by misconfiguration analyzer)
     outbound_analysis["udr_analysis"] = route_table_analysis
 
-    # Phase 5: Analyze VMSS configuration
-    logger.warning("[5/9] Analyzing VMSS configuration...")
-    vmss_analysis = collector.collect_vmss_info(cluster_info)
-
-    # Phase 6: Analyze NSG configuration
+    # Phase 6: Analyze Network Security Groups...
     logger.warning("[6/9] Analyzing Network Security Groups...")
     nsg_analyzer = NSGAnalyzer(
         clients=clients,

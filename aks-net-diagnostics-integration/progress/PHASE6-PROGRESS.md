@@ -24,8 +24,8 @@ Phase 6 focuses on comprehensive integration testing of the `az aks net-diagnost
 - ✅ Category 4: Error Handling Tests - **COMPLETE** (2/2 tests passed)
 - ✅ Category 5: Performance Tests - **COMPLETE** (1/1 test passed)
 - 🟡 Category 6-7: In progress
-- 🐛 Bugs Found: 19
-- ✅ Bugs Fixed: 19
+- 🐛 Bugs Found: 20
+- ✅ Bugs Fixed: 20
 - 📊 Success Rate: 100%
 
 ---
@@ -497,8 +497,8 @@ az aks net-diagnostics -n aks-overlay -g aks-overlay-rg
 ---
 
 **Category 2 Overall Results:**
-- **Tests Run:** 17 (3 clusters with extended UDR testing on aks-overlay)
-- **Tests Passed:** 17
+- **Tests Run:** 20 (4 clusters including NAT Gateway scenario)
+- **Tests Passed:** 20
 - **Tests Failed:** 0
 - **Success Rate:** 100%
 - **Critical Issues Detected:** 1 (UDR + Authorized IP ranges conflict)
@@ -514,6 +514,90 @@ az aks net-diagnostics -n aks-overlay -g aks-overlay-rg
   - ✅ Detailed recommendations for DNS forwarding
   - ✅ JSON report generation for all cluster types
   - ✅ Verbose logging for troubleshooting
+  - ✅ NAT Gateway outbound type detection
+  - ✅ NAT Gateway IP identification
+
+---
+
+#### Test 2.4: NAT Gateway Outbound (aks-managed-natgw-bicep)
+**Cluster Configuration:**
+- Private Cluster: No
+- Network Plugin: Azure CNI
+- Outbound Type: managedNATGateway
+- NAT Gateway IP: 52.138.58.13
+- Provisioning State: Succeeded
+- Location: canadacentral
+
+**Test 2.4.1: Basic Execution**
+```bash
+az aks net-diagnostics -n aks-managed-natgw-bicep -g aks-managed-natgw-bicep-rg
+```
+**Duration:** ~8 seconds  
+**Result:** SUCCESS
+
+**Validation:**
+- ✅ Detected managedNATGateway outbound type
+- ✅ Identified NAT Gateway public IP: 52.138.58.13
+- ✅ Correctly showed no route tables (NAT Gateway doesn't need UDRs)
+- ✅ Clean NSG configuration detected
+- ✅ No findings (healthy configuration)
+
+**Test 2.4.2: Detailed Report**
+```bash
+az aks net-diagnostics -n aks-managed-natgw-bicep -g aks-managed-natgw-bicep-rg --details
+```
+**Duration:** ~8 seconds  
+**Result:** SUCCESS
+
+**Validation:**
+- ✅ Outbound Type: managedNATGateway
+- ✅ Effective Public IPs: 52.138.58.13
+- ✅ UDR Analysis: No route tables found (expected)
+- ✅ NSG Analysis: 1 NSG, 0 issues, clean default rules
+- ✅ Inter-node communication: Not blocked
+
+**Test 2.4.3: JSON Report**
+```bash
+az aks net-diagnostics -n aks-managed-natgw-bicep -g aks-managed-natgw-bicep-rg --json-report
+```
+**Duration:** ~8 seconds  
+**Result:** SUCCESS
+
+**JSON Validation:**
+- ✅ `networking.outbound.type: "managedNATGateway"`
+- ✅ `configured_public_ips: ["52.138.58.13"]`
+- ✅ `effective_mechanism: "managedNATGateway"`
+- ✅ `overridden_by_udr: false`
+- ✅ Empty route_tables array (correct for NAT Gateway)
+
+**Test 2.4.4: UDR Detection on AKS-Managed VNet (Bug #20)**
+```bash
+# Attach UDR to AKS-managed VNet subnet
+az network vnet subnet update \
+  --resource-group MC_aks-managed-natgw-bicep-rg_aks-managed-natgw-bicep_canadacentral \
+  --vnet-name aks-vnet-12020922 \
+  --name aks-subnet \
+  --route-table sec-udr
+
+# Run diagnostics
+az aks net-diagnostics -n aks-managed-natgw-bicep -g aks-managed-natgw-bicep-rg
+```
+**Duration:** ~8 seconds  
+**Result:** SUCCESS (after Bug #20 fix)
+
+**Issue Discovered:**
+- Before fix: Tool reported "No route tables found on node subnets" despite route table being attached
+- Root Cause: RouteTableAnalyzer only checked cluster.agentPoolProfiles which have null vnetSubnetId for managed VNets
+- Bug #20: RouteTableAnalyzer missing AKS-managed VNet subnet detection
+
+**Fix Validation:**
+- ✅ Route table `sec-udr` detected
+- ✅ Default route (0.0.0.0/0 → 192.168.11.1 VirtualAppliance) analyzed
+- ✅ WARNING generated: "Default route redirects all internet traffic through virtual appliance at 192.168.11.1. Outbound type is managedNATGateway."
+- ✅ Recommendation provided: "Ensure the virtual appliance is properly configured to handle AKS traffic"
+- ✅ No regression on customer-provided VNets (aks-overlay still works)
+
+**Summary:** NAT Gateway outbound detection and analysis working perfectly, including UDR detection for managed VNets ✅
 
 ---
 
@@ -899,6 +983,34 @@ Code: ResourceGroupNotFound
   - After fix: 1 route table (sec-udr) found, 2 UDR warnings generated
 - **Status:** ✅ FIXED
 - **Commit:** (combined with Bug #17-18)
+
+#### Bug #20: RouteTableAnalyzer Missing AKS-Managed VNet Subnet Detection
+- **Severity:** High
+- **Location:** `route_table_analyzer.py` `_get_unique_subnet_ids()` method
+- **Error:** "No route tables found on node subnets" despite route table being attached
+- **Root Cause:** RouteTableAnalyzer only checked `agentPoolProfiles[].vnetSubnetId` which is null for AKS-managed VNets
+- **Impact:** UDR analysis completely skipped for clusters with AKS-managed VNets (most common deployment pattern)
+- **Discovery:** Test 2.4.4 - Created NAT Gateway cluster without custom VNet, attached UDR to managed subnet, tool reported "No route tables found"
+- **Scenario:** 
+  - Cluster created without `--vnet-subnet-id` parameter
+  - AKS creates VNet automatically in MC_ resource group  
+  - Subnet ID only available in VMSS network profile, not in cluster.agentPoolProfiles
+  - Route table `sec-udr` attached to managed subnet with default route to firewall (192.168.11.1)
+- **Fix:** 
+  1. Moved VMSS collection from Phase 5 to Phase 2.5 (before Route Table analysis)
+  2. Updated `RouteTableAnalyzer.__init__()` to accept optional `vmss_analysis` parameter
+  3. Modified `_get_unique_subnet_ids()` to extract subnet IDs from VMSS network profile when agent pools have no subnet IDs
+  4. Added backward compatibility for OutboundAnalyzer (handles both dict and NetworkManagementClient for network_client parameter)
+- **Files Changed:**
+  - `orchestrator.py`: Moved VMSS collection, passed vmss_analysis to RouteTableAnalyzer
+  - `route_table_analyzer.py`: Added VMSS support, enhanced subnet extraction logic
+- **Testing:**
+  - Cluster: aks-managed-natgw-bicep (managed VNet + NAT Gateway outbound)
+  - Before fix: "No route tables found on node subnets"
+  - After fix: Detected route table `sec-udr`, generated WARNING for default route to virtual appliance
+  - Regression test: aks-overlay (customer VNet) still works correctly
+- **Status:** ✅ FIXED
+- **Commit:** (pending)
 
 ---
 
