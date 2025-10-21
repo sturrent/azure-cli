@@ -156,7 +156,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     )
     outbound_analysis = outbound_analyzer.analyze(show_details=details)
     outbound_ips = outbound_analyzer.get_outbound_ips()
-    
+
     # Add UDR analysis to outbound analysis (expected by misconfiguration analyzer)
     outbound_analysis["udr_analysis"] = route_table_analysis
 
