@@ -170,53 +170,55 @@ class NSGAnalyzer(BaseAnalyzer):
                         continue
 
                     processed_subnets.add(subnet_id)
+                    self._process_subnet_nsg(subnet_id)
 
-                    # Get subnet information using SDK
-                    try:
-                        # Parse subnet ID to get components
-                        parsed = self._parse_resource_id(subnet_id)
-                        subnet_rg = parsed["resource_group"]
-                        vnet_name = parsed["parent_name"]  # VNet is parent of subnet
-                        subnet_name = parsed["resource_name"]
+    def _process_subnet_nsg(self, subnet_id: str) -> None:
+        """Process NSG for a single subnet."""
+        try:
+            # Parse subnet ID to get components
+            parsed = self._parse_resource_id(subnet_id)
+            subnet_rg = parsed["resource_group"]
+            vnet_name = parsed["parent_name"]  # VNet is parent of subnet
+            subnet_name = parsed["resource_name"]
 
-                        # Get subnet info using SDK
-                        subnet_info = self.network_client.subnets.get(subnet_rg, vnet_name, subnet_name)
+            # Get subnet info using SDK
+            subnet_info = self.network_client.subnets.get(subnet_rg, vnet_name, subnet_name)
 
-                        nsg_info = subnet_info.network_security_group
-                        if nsg_info:
-                            nsg_id = nsg_info.id
-                            nsg_name = nsg_id.split("/")[-1] if nsg_id else "unknown"
+            nsg_info = subnet_info.network_security_group
+            if nsg_info:
+                nsg_id = nsg_info.id
+                nsg_name = nsg_id.split("/")[-1] if nsg_id else "unknown"
 
-                            # Parse NSG ID to get resource group
-                            nsg_parsed = self._parse_resource_id(nsg_id)
-                            nsg_rg = nsg_parsed["resource_group"]
+                # Parse NSG ID to get resource group
+                nsg_parsed = self._parse_resource_id(nsg_id)
+                nsg_rg = nsg_parsed["resource_group"]
 
-                            # Get NSG details using SDK
-                            nsg_details = self.network_client.network_security_groups.get(nsg_rg, nsg_name)
+                # Get NSG details using SDK
+                nsg_details = self.network_client.network_security_groups.get(nsg_rg, nsg_name)
 
-                            if nsg_details:
-                                # Convert to dictionary with snake_case keys
-                                nsg_dict = self._to_dict(nsg_details)
+                if nsg_details:
+                    # Convert to dictionary with snake_case keys
+                    nsg_dict = self._to_dict(nsg_details)
 
-                                self.nsg_analysis["subnet_nsgs"].append(
-                                    {
-                                        "subnet_id": subnet_id,
-                                        "subnet_name": subnet_info.name,
-                                        "nsg_id": nsg_id,
-                                        "nsg_name": nsg_name,
-                                        "rules": nsg_dict.get("security_rules", []),
-                                        "default_rules": nsg_dict.get("default_security_rules", []),
-                                    }
-                                )
+                    self.nsg_analysis["subnet_nsgs"].append(
+                        {
+                            "subnet_id": subnet_id,
+                            "subnet_name": subnet_info.name,
+                            "nsg_id": nsg_id,
+                            "nsg_name": nsg_name,
+                            "rules": nsg_dict.get("security_rules", []),
+                            "default_rules": nsg_dict.get("default_security_rules", []),
+                        }
+                    )
 
-                                self.logger.info("  Found NSG on subnet %s: %s", subnet_info.name, nsg_name)
-                        else:
-                            self.logger.info("  No NSG found on subnet %s", subnet_info.name)
+                    self.logger.info("  Found NSG on subnet %s: %s", subnet_info.name, nsg_name)
+            else:
+                self.logger.info("  No NSG found on subnet %s", subnet_info.name)
 
-                    except (ResourceNotFoundError, HttpResponseError) as e:
-                        self.logger.error("  Failed to analyze subnet %s: %s", subnet_id, e)
-                    except Exception as e:  # pylint: disable=broad-except
-                        self.logger.error("  Error parsing subnet ID %s: %s", subnet_id, e)
+        except (ResourceNotFoundError, HttpResponseError) as e:
+            self.logger.error("  Failed to analyze subnet %s: %s", subnet_id, e)
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("  Error parsing subnet ID %s: %s", subnet_id, e)
 
     def _analyze_nic_nsgs(self) -> None:
         """Analyze NSGs associated with node NICs."""

@@ -32,6 +32,7 @@ class VMSSInstance:
     provisioning_state: str
 
 
+# pylint: disable=too-few-public-methods
 class ConnectivityTester:
     """Manages connectivity testing from AKS VMSS instances"""
 
@@ -127,7 +128,8 @@ class ConnectivityTester:
         total_vmss_count = len(vmss_instances)
         if total_vmss_count > 1:
             self.logger.info(
-                "Found %s VMSS instance(s). Testing connectivity from the first one: %s (skipping %s others for performance)",
+                "Found %s VMSS instance(s). Testing connectivity from the first one: %s "
+                "(skipping %s others for performance)",
                 total_vmss_count,
                 first_vmss.vmss_name,
                 total_vmss_count - 1,
@@ -536,6 +538,7 @@ class ConnectivityTester:
 
         return False
 
+    # pylint: disable=too-many-return-statements
     def _validate_private_dns_resolution(self, nslookup_output: str, hostname: str) -> bool:
         """Validate that DNS resolution returns a private IP address for private clusters"""
         # Use the modular DNS analyzer if available
