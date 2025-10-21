@@ -1,28 +1,34 @@
 # Phase 6 Integration Testing - Completion Report
 
 **Generated:** October 21, 2025  
+**Updated:** October 21, 2025 (Post-exploration findings)  
 **Branch:** aks-net-diagnostics-integration  
-**Final Commits:** 
+**Key Commits:** 
 - ef885d78f9 (Categories 1-5 completion, 19 bugs fixed, documentation)
 - dfad38a410 (Bug #20 fix - AKS-managed VNet UDR detection)
+- 14918989ea (Phase 6 completion documentation)
+- 26efd06259 (Bug #21 - UX improvement for probe test visibility)
+- 320b960dcc (Bugs #22-23 - Duplicate route messages, API server diagnostics)
+- 02e4865429 (Bug #24 - Probe test UX improvements)
 
 ---
 
 ## Executive Summary
 
-Phase 6 integration testing has been **successfully completed** with comprehensive validation across 33+ test scenarios. The `az aks net-diagnostics` command has been tested against real AKS clusters with various configurations, resulting in the identification and resolution of **20 bugs** with a **100% fix rate**.
+Phase 6 integration testing has been **successfully completed** with comprehensive validation across 33+ test scenarios, followed by additional exploration testing that identified 4 more issues. The `az aks net-diagnostics` command has been tested against real AKS clusters with various configurations, resulting in the identification and resolution of **24 bugs** with a **100% fix rate**.
 
 ### Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests Executed** | 33+ |
+| **Total Tests Executed** | 33+ (Phase 6) + 6+ (Exploration) |
 | **Test Categories** | 5 |
-| **Bugs Found** | 20 |
-| **Bugs Fixed** | 20 (100%) |
+| **Bugs Found** | 24 |
+| **Bugs Fixed** | 24 (100%) |
 | **Success Rate** | 100% |
-| **Test Clusters** | 4 |
+| **Test Clusters** | 5 |
 | **Outbound Types Tested** | 3 (loadBalancer, userDefinedRouting, managedNATGateway) |
+| **Network Topologies** | Hub-spoke, managed VNet, customer VNet |
 
 ---
 
@@ -121,6 +127,14 @@ Phase 6 integration testing has been **successfully completed** with comprehensi
    - UDR: Attached post-deployment
    - Purpose: NAT Gateway + managed VNet + UDR testing
 
+5. **aks-fw** (aks-fw-rg) - *Added during exploration*
+   - Outbound Type: userDefinedRouting
+   - Network Plugin: azure
+   - Private Cluster: No
+   - Network Topology: Hub-spoke (customer-provided VNet)
+   - UDR: Default route to virtual appliance (10.0.1.4)
+   - Purpose: Hub-spoke topology, firewall testing, probe test validation
+
 ---
 
 ## Critical Bugs Fixed
@@ -147,6 +161,36 @@ Phase 6 integration testing has been **successfully completed** with comprehensi
 - **Impact:** Users couldn't see route table information without --details flag
 - **Fix:** Modified outbound analyzer to include UDR summary in standard output
 - **Validation:** Test 2.3.4 confirmed UDR info in standard output
+
+### Additional Bugs Found During Exploration (Bugs #21-24)
+
+**Bug #21: Probe Test Results Not Visible in Summary** 🟡 **UX**
+- **Impact:** Users running --probe-test got no feedback that tests executed
+- **Scenario:** Running connectivity tests didn't show results in summary report
+- **Fix:** Added "Connectivity Tests" section to summary report with pass/fail counts
+- **Validation:** Confirmed results display when --probe-test used, omitted otherwise
+- **Commit:** 26efd06259
+
+**Bug #22: Duplicate Route Table Messages** 🟡 **UX**
+- **Impact:** "Found route table" message appeared 3 times in output
+- **Root Cause:** RouteTableAnalyzer called twice (Phase 3 and Phase 4)
+- **Fix:** Pass pre-computed route analysis from Phase 3 to Phase 4
+- **Validation:** Route table now reported once during Phase 3
+- **Commit:** 320b960dcc
+
+**Bug #23: Misleading API Server Failure Diagnostics** 🟠 **MEDIUM**
+- **Impact:** Incorrect recommendation when DNS passed but HTTPS failed
+- **Scenario:** Firewall blocking port 443 with working DNS suggested DNS fixes
+- **Fix:** Check DNS test results; recommend firewall/NSG if DNS passed
+- **Validation:** Confirmed context-aware recommendations with aks-fw cluster
+- **Commit:** 320b960dcc
+
+**Bug #24: Silent Connectivity Test Execution** 🟡 **UX**
+- **Impact:** No progress feedback during Phase 9 connectivity tests
+- **Fix:** Changed logger level to WARNING, show [PASSED]/[FAILED] for each test
+- **Additional Fix:** Remove "Errors: 0" noise from summary breakdown
+- **Validation:** Test execution now visible with clear status indicators
+- **Commit:** 02e4865429
 
 ### Network Analysis Bugs (Bugs #1-7, #9, #11-14)
 - API server access type detection
@@ -189,12 +233,16 @@ Phase 6 integration testing has been **successfully completed** with comprehensi
 - Validated both customer-provided and AKS-managed VNets
 - Covered private and public cluster scenarios
 - Tested API server access restrictions
+- Validated hub-spoke network topologies
+- Tested probe connectivity feature with firewall scenarios
 
-### ✅ Production-Ready Quality
-- 100% bug fix rate
+### ✅ High-Quality POC
+- 100% bug fix rate (24/24 bugs resolved)
 - No known issues remaining
 - Robust error handling
 - Clear, actionable output
+- User-friendly progress indicators
+- Context-aware diagnostics
 
 ### ✅ User Experience
 - Helpful warnings for misconfigurations
@@ -236,17 +284,18 @@ Phase 6 integration testing has been **successfully completed** with comprehensi
 
 ### Immediate Next Steps
 
-1. **Merge to Main Branch**
-   - All tests passing
-   - 20 bugs fixed with 100% resolution rate
+1. **Phase 7: Documentation & Polish**
+   - All Phase 6 tests passing
+   - 24 bugs fixed with 100% resolution rate
    - Code quality verified (azdev scan passing)
-   - Documentation complete
+   - Ready for final documentation review
 
-2. **Expanded Testing** (Optional)
+2. **Expanded Testing** (Optional - Beyond POC Scope)
    - Test with Azure CNI Overlay network plugin
    - Test with Windows node pools
    - Test with multiple node pool configurations
    - Test with different Azure regions
+   - Additional hub-spoke topology variations
 
 3. **Performance Optimization** (Future Enhancement)
    - Parallel API calls where safe
@@ -289,19 +338,23 @@ Phase 6 integration testing has been **successfully completed** with comprehensi
 
 ## Conclusion
 
-Phase 6 integration testing has **successfully validated** the `az aks net-diagnostics` command across a comprehensive range of real-world scenarios. With **33+ tests executed**, **20 bugs identified and fixed**, and a **100% success rate**, the feature is ready for production use.
+Phase 6 integration testing has **successfully validated** the `az aks net-diagnostics` command across a comprehensive range of real-world scenarios. With **33+ formal tests** plus **additional exploration testing**, **24 bugs identified and fixed**, and a **100% success rate**, the POC demonstrates the feature's viability and value.
 
 The discovery and resolution of Bug #20 (AKS-managed VNet UDR detection) represents a significant quality improvement, ensuring the tool works correctly for the most common AKS deployment pattern where users rely on Azure to create the VNet automatically.
 
-The testing methodology employed—using real Azure resources rather than mocks—has proven highly effective in uncovering edge cases and ensuring production readiness. The iterative fix-and-validate approach has resulted in a robust, well-documented feature that provides genuine value to AKS administrators.
+Additional bugs found during exploration (Bugs #21-24) demonstrate the value of real-world usage testing beyond formal test scenarios. These UX improvements enhance the user experience significantly, particularly for the probe testing feature.
+
+The testing methodology employed—using real Azure resources rather than mocks—has proven highly effective in uncovering edge cases and ensuring the POC meets real-world requirements. The iterative fix-and-validate approach has resulted in a robust, well-documented feature that provides genuine value to AKS administrators.
 
 ---
 
 ## Sign-Off
 
 **Phase 6 Status:** ✅ **COMPLETE**  
-**Recommendation:** **READY FOR MERGE**  
-**Next Phase:** Production deployment and user feedback collection
+**Bugs Found:** 24 (20 during formal testing + 4 during exploration)  
+**Bugs Fixed:** 24 (100% resolution rate)  
+**Recommendation:** **PROCEED TO PHASE 7 (Documentation & Polish)**  
+**Next Steps:** Final documentation review, prepare for handoff
 
 ---
 

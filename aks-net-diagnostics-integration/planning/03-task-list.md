@@ -519,8 +519,13 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 ## Phase 6: Integration Testing & Validation ✅ COMPLETE (100%)
 
 **Duration:** October 20-21, 2025  
-**Completion:** ✅ COMPLETE (33+ tests executed - 100%)  
-**Latest Commits:** dfad38a410, 8f714d70f0  
+**Completion:** ✅ COMPLETE (33+ formal tests + 6+ exploration tests)  
+**Latest Commits:**  
+- dfad38a410, 8f714d70f0 (Bugs #1-20)
+- 26efd06259 (Bug #21 - Probe test UX)
+- 320b960dcc (Bugs #22-23 - Duplicate messages, API diagnostics)
+- 02e4865429 (Bug #24 - Test execution visibility)
+
 **Final Report:** See `progress/PHASE6-COMPLETION.md`
 
 ### 6.0 Real Cluster Testing ✅ COMPLETE
@@ -530,6 +535,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 2. **aks-std-private** (aks-std-private-rg) - Private cluster + authorized IP ranges
 3. **aks-apiserver-vnet-demo** (aks-apiserver-vnet-demo-rg) - API server VNet integration
 4. **aks-managed-natgw-bicep** (aks-managed-natgw-bicep-rg) - NAT Gateway + managed VNet
+5. **aks-fw** (aks-fw-rg) - Hub-spoke topology, userDefinedRouting, firewall testing
 
 **Testing Results:**
 
@@ -561,31 +567,50 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 **Category 5: Performance** ✅ COMPLETE (1/1)
 - [x] Test 5.1: Execution time validation ✅ PASSED (~8-10 seconds)
 
-**Total Tests Executed:** 33+  
-**Tests Passed:** 33+ (100%)  
-**Bugs Found:** 20  
-**Bugs Fixed:** 20 (100%)
+**Exploration Testing** ✅ COMPLETE (6+ scenarios)
+- [x] Hub-spoke network topology validation
+- [x] Customer-provided VNet with UDR
+- [x] Firewall blocking scenarios with --probe-test
+- [x] Route table detection across different VNet types
+- [x] API server connectivity diagnostics
+- [x] Connectivity test execution flow
 
-**Critical Bug Fixed:**
+**Total Tests Executed:** 39+ (33 formal + 6 exploration)  
+**Tests Passed:** 39+ (100%)  
+**Bugs Found:** 24  
+**Bugs Fixed:** 24 (100%)
+
+**Critical Bugs Fixed:**
 - **Bug #20:** RouteTableAnalyzer missing AKS-managed VNet subnet detection
   - Impact: UDR analysis failed for most common deployment pattern
   - Fix: Modified analyzer to extract subnet IDs from VMSS network profiles
   - Validation: Test 2.4.4 confirmed detection on managed VNet
 
-**All 20 Bugs Fixed:**
+**Exploration Bugs Fixed (Bugs #21-24):**
+- **Bug #21:** Probe test results not visible in summary (UX)
+- **Bug #22:** Duplicate route table messages (UX)
+- **Bug #23:** Misleading API server failure diagnostics when DNS passed
+- **Bug #24:** Silent connectivity test execution + noisy error display
+
+**All 24 Bugs Fixed:**
 1-7. Client architecture, API versions, parameters
 8-10. UDR analysis and warnings
 11-14. NSG and DNS analyzers
 15-16. Findings display and connectivity tests
 17-19. Import statements, logger integration, network client
 20. **AKS-managed VNet UDR detection** (critical)
+21. Probe test summary visibility (UX)
+22. Duplicate route table messages (UX)
+23. Context-aware API server diagnostics
+24. Test execution feedback and summary formatting (UX)
 
 **Documentation:**
 - [x] Created PHASE6-PROGRESS.md (comprehensive test results)
-- [x] Created PHASE6-COMPLETION.md (executive summary)
-- [x] Updated bug tracker with all 20 bugs
+- [x] Created PHASE6-COMPLETION.md (executive summary - updated with exploration findings)
+- [x] Updated bug tracker with all 24 bugs
+- [x] Documented all test scenarios and fixes
 
-**Status:** ✅ COMPLETE - All categories tested, 100% success rate, ready for merge
+**Status:** ✅ COMPLETE - All categories tested, 100% success rate, 24/24 bugs fixed, POC validated
 
 ### 6.1 Unit Tests
 - [ ] Create `src/azure-cli/azure/cli/command_modules/acs/tests/latest/test_aks_net_diagnostics.py`
