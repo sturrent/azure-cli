@@ -981,18 +981,39 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
             if "API Server" in t.get("test_name", "")
         ]
         if api_failures:
-            findings.append({
-                "severity": "critical",
-                "code": "CONNECTIVITY_API_SERVER_FAILURE",
-                "message": (
-                    "API server connectivity test failed from cluster nodes"
-                ),
-                "recommendation": (
-                    "Check private DNS configuration, VNet links, and API "
-                    "server access policies. For private clusters, ensure "
-                    "DNS resolution is working correctly."
-                ),
-            })
+            # Check if DNS tests passed - if so, it's likely firewall/NSG, not DNS
+            dns_tests = [t for t in tests if "DNS Resolution" in t.get("test_name", "")]
+            dns_passed = any(t.get("status") == "passed" for t in dns_tests)
+            
+            if dns_passed:
+                # DNS works, so API server failure is likely firewall/NSG/outbound rules
+                findings.append({
+                    "severity": "critical",
+                    "code": "CONNECTIVITY_API_SERVER_FAILURE",
+                    "message": (
+                        "API server connectivity test failed from cluster nodes"
+                    ),
+                    "recommendation": (
+                        "Check outbound connectivity rules, firewall settings, and "
+                        "network security groups. DNS resolution is working, so the "
+                        "issue is likely with HTTPS connectivity (port 443) being "
+                        "blocked. Verify API server IP is allowed in firewall/NSG rules."
+                    ),
+                })
+            else:
+                # DNS failed or no DNS test, use DNS-focused recommendation
+                findings.append({
+                    "severity": "critical",
+                    "code": "CONNECTIVITY_API_SERVER_FAILURE",
+                    "message": (
+                        "API server connectivity test failed from cluster nodes"
+                    ),
+                    "recommendation": (
+                        "Check private DNS configuration, VNet links, and API "
+                        "server access policies. For private clusters, ensure "
+                        "DNS resolution is working correctly."
+                    ),
+                })
 
         if error_tests:
             findings.append({

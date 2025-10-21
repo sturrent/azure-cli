@@ -18,8 +18,6 @@ from typing import Any, Dict, List, Optional
 
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
-from .route_table_analyzer import RouteTableAnalyzer
-
 
 class OutboundConnectivityAnalyzer:
     """Analyzer for AKS cluster outbound connectivity configuration"""
@@ -29,6 +27,7 @@ class OutboundConnectivityAnalyzer:
         cluster_info: Dict[str, Any],
         agent_pools: List[Dict[str, Any]],
         clients: Dict[str, Any],
+        route_table_analysis: Optional[Dict[str, Any]] = None,
         logger: Optional[logging.Logger] = None,
     ):
         """
@@ -41,6 +40,7 @@ class OutboundConnectivityAnalyzer:
                 - network_client: NetworkManagementClient instance
                 - subscription_id: Current subscription ID
                 - credential: Azure credentials
+            route_table_analysis: Pre-computed route table analysis results (optional)
             logger: Optional logger instance
         """
         self.cluster_info = cluster_info
@@ -48,6 +48,7 @@ class OutboundConnectivityAnalyzer:
         self.network_client = clients["network_client"]
         self.subscription_id = clients["subscription_id"]
         self.credential = clients["credential"]
+        self.route_table_analysis = route_table_analysis or {}
         self.logger = logger or logging.getLogger(__name__)
 
         # Results storage
@@ -77,10 +78,9 @@ class OutboundConnectivityAnalyzer:
         elif outbound_type == "managedNATGateway":
             self._analyze_nat_gateway_outbound(show_details)
 
-        # Always check for UDRs on node subnets regardless of outbound type
-        # This helps detect scenarios where Azure Firewall is used with Load Balancer outbound
-        self.logger.info("  - Checking for UDRs on node subnets...")
-        udr_analysis = self._analyze_node_subnet_udrs()
+        # Use pre-computed route table analysis from Phase 3
+        # (no need to re-analyze - it's already been done)
+        udr_analysis = self.route_table_analysis
 
         # Determine effective outbound configuration and warn about conflicts
         effective_outbound_summary = self._determine_effective_outbound(
@@ -102,16 +102,6 @@ class OutboundConnectivityAnalyzer:
     def get_outbound_ips(self) -> List[str]:
         """Get list of configured outbound public IPs"""
         return self.outbound_ips.copy()
-
-    def _analyze_node_subnet_udrs(self) -> Dict[str, Any]:
-        """Analyze User Defined Routes on node subnets using RouteTableAnalyzer"""
-        clients = {
-            "network_client": self.network_client,
-            "subscription_id": self.subscription_id,
-            "credential": self.credential,
-        }
-        analyzer = RouteTableAnalyzer(self.agent_pools, clients)
-        return analyzer.analyze()
 
     def _determine_effective_outbound(
         self, outbound_type: str, udr_analysis: Dict[str, Any]
@@ -376,8 +366,8 @@ class OutboundConnectivityAnalyzer:
         """Analyze User Defined Routing outbound configuration"""
         self.logger.info("  - Analyzing User Defined Routing configuration...")
 
-        # Get route table information for node subnets
-        udr_analysis = self._analyze_node_subnet_udrs()
+        # Use pre-computed route table analysis
+        udr_analysis = self.route_table_analysis
 
         # Store UDR analysis results
         self.outbound_analysis = {
