@@ -439,14 +439,31 @@ Tip: Use --details flag for detailed analysis
     - Added helpful remediation message for stopped clusters
     - 1 file changed, 4 insertions(+), 1 deletion(-)
 
-**Total Commits:** 11  
-**Total Changes:** ~900 lines added/modified
+12. **4f653440bf** - "Phase 6: Update progress docs with Category 1 complete"
+    - Updated PHASE6-PROGRESS.md with Tests 1.2-1.6 results
+    - Updated testing summary (6/29 tests, 21%)
+    - 1 file changed, 255 insertions(+), 29 deletions(-)
+
+13. **7d17fcb5af** - "Update README and task list with Phase 6 progress"
+    - Updated README.md with latest progress stats
+    - Updated 03-task-list.md with Phase 6 completion percentage
+    - 2 files changed, 25 insertions(+), 15 deletions(-)
+
+14. **d424ae1a26** - "Add help text and linter exclusions for net-diagnostics command"
+    - Added comprehensive help entry in _help.py with 4 examples
+    - Added linter exclusions for test coverage (POC phase)
+    - Resolves HIGH severity linter warning (missing_command_example)
+    - Excludes MEDIUM severity test coverage warnings (tests planned post-POC)
+    - 2 files changed, 54 insertions(+)
+
+**Total Commits:** 14  
+**Total Changes:** ~1000+ lines added/modified
 
 ---
 
 ## Files Modified
 
-**Total Files Changed:** 8 unique files
+**Total Files Changed:** 10 unique files
 
 1. **_client_factory.py**
    - Rewrote `get_network_client()` function
@@ -492,7 +509,19 @@ Tip: Use --details flag for detailed analysis
    - Changed logger.info() to logger.warning() for improved visibility
    - ~6 lines changed total
 
-**Total Lines Changed:** ~165 insertions/modifications across all fixes
+9. **_help.py**
+   - Added comprehensive help entry for `net-diagnostics` command
+   - Includes short summary, long summary, parameter descriptions
+   - Added 4 usage examples (basic, --details, --probe-test, full)
+   - ~35 lines added
+
+10. **linter_exclusions.yml**
+    - Added exclusions for `net-diagnostics` command
+    - Excluded `missing_command_test_coverage` (POC phase)
+    - Excluded `missing_parameter_test_coverage` for all 5 parameters
+    - ~19 lines added
+
+**Total Lines Changed:** ~220 insertions/modifications across all files
 
 ---
 
