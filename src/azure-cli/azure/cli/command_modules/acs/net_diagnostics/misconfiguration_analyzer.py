@@ -984,7 +984,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
             # Check if DNS tests passed - if so, it's likely firewall/NSG, not DNS
             dns_tests = [t for t in tests if "DNS Resolution" in t.get("test_name", "")]
             dns_passed = any(t.get("status") == "passed" for t in dns_tests)
-            
+
             if dns_passed:
                 # DNS works, so API server failure is likely firewall/NSG/outbound rules
                 findings.append({

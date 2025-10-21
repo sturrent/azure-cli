@@ -223,87 +223,8 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         )
         print(f"- Private Cluster: {str(is_private).lower()}")
 
-        if (self.outbound_ips or
-                (self.outbound_analysis and
-                 self.outbound_analysis.get("effective_outbound"))):
-            print()
-            print("**Outbound Configuration:**")
-
-            effective_outbound = (
-                self.outbound_analysis.get("effective_outbound", {})
-                if self.outbound_analysis else {}
-            )
-
-            if effective_outbound.get("overridden_by_udr"):
-                # UDR overrides the load balancer
-                print("- Configured Load Balancer IPs (not effective):")
-                for ip in self.outbound_ips:
-                    print(f"  - {ip}")
-                print("- Effective Outbound (via UDR):")
-                for ip in effective_outbound.get("virtual_appliance_ips", []):
-                    print(f"  - Virtual Appliance: {ip}")
-            else:
-                # No UDR override, show based on configured mechanism
-                outbound_type = (
-                    self.outbound_analysis.get("type", "loadBalancer")
-                    if self.outbound_analysis else "loadBalancer"
-                )
-
-                if outbound_type == "loadBalancer" and self.outbound_ips:
-                    print("- Load Balancer IPs:")
-                    for ip in self.outbound_ips:
-                        print(f"  - {ip}")
-                elif (outbound_type == "userDefinedRouting" and
-                      effective_outbound.get("virtual_appliance_ips")):
-                    print("- Virtual Appliance IPs:")
-                    for ip in effective_outbound.get(
-                        "virtual_appliance_ips",
-                        []
-                    ):
-                        print(f"  - {ip}")
-                elif self.outbound_ips:
-                    # Fallback to showing configured IPs
-                    print("- Outbound IPs:")
-                    for ip in self.outbound_ips:
-                        print(f"  - {ip}")
-
-        # Show connectivity test results if probe tests were run
-        if self.api_probe_results and isinstance(self.api_probe_results, dict):
-            # Check if tests were skipped
-            if self.api_probe_results.get("skipped"):
-                # Don't show anything if skipped (user didn't request --probe-test)
-                pass
-            elif self.api_probe_results.get("enabled"):
-                # Tests were run
-                print()
-                print("**Connectivity Tests:**")
-                
-                summary = self.api_probe_results.get("summary", {})
-                total_tests = summary.get("total_tests", 0)
-                passed = summary.get("passed", 0)
-                failed = summary.get("failed", 0)
-                errors = summary.get("errors", 0)
-                
-                if total_tests == 0:
-                    print("- No connectivity tests were performed")
-                elif failed == 0 and errors == 0:
-                    print(f"- [OK] All {passed}/{total_tests} connectivity tests passed")
-                else:
-                    print(
-                        f"- [WARNING] {failed + errors}/{total_tests} "
-                        f"connectivity tests failed"
-                    )
-                    # Build breakdown showing only non-zero components
-                    breakdown_parts = []
-                    if passed > 0:
-                        breakdown_parts.append(f"Passed: {passed}")
-                    if failed > 0:
-                        breakdown_parts.append(f"Failed: {failed}")
-                    if errors > 0:
-                        breakdown_parts.append(f"Errors: {errors}")
-                    
-                    if breakdown_parts:
-                        print(f"  - {', '.join(breakdown_parts)}")
+        self._print_outbound_configuration()
+        self._print_connectivity_tests()
 
         print()
         print("**Findings Summary:**")
@@ -343,6 +264,86 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         if json_report_path:
             print(f"[DOC] JSON report saved to: {json_report_path}")
         print("Tip: Use --details flag for detailed analysis")
+
+    def _print_outbound_configuration(self):
+        """Print outbound IP configuration section"""
+        outbound_ips = self.cluster_info.get("network_profile", {}).get(
+            "load_balancer_profile", {}
+        ).get("effective_outbound_i_ps")
+        effective_outbound = self.cluster_info.get("effective_outbound_type")
+
+        if outbound_ips or effective_outbound:
+            print()
+            print("**Outbound Configuration:**")
+
+            # Check if we have UDR override situation
+            configured_type = self.cluster_info.get(
+                "network_profile", {}
+            ).get("outbound_type", "loadBalancer")
+
+            if effective_outbound and effective_outbound != configured_type:
+                # UDR override detected
+                print(
+                    f"- Configured Type: {configured_type} "
+                    f"(overridden by UDR to {effective_outbound})"
+                )
+                if effective_outbound == "userDefinedRouting":
+                    print(
+                        "- Effective IPs: Determined by User Defined Routes "
+                        "(route table)"
+                    )
+            elif configured_type == "loadBalancer" and outbound_ips:
+                # Regular load balancer
+                ip_list = ", ".join([
+                    ip.get("id", "").split("/")[-1]
+                    for ip in outbound_ips
+                    if ip.get("id")
+                ])
+                print(f"- Load Balancer IPs: {ip_list}")
+            elif configured_type == "userDefinedRouting":
+                # Regular UDR
+                print(
+                    "- Effective IPs: Determined by User Defined Routes "
+                    "(route table)"
+                )
+            elif configured_type == "managedNATGateway":
+                print("- Outbound: Managed NAT Gateway")
+
+    def _print_connectivity_tests(self):
+        """Print connectivity test results section"""
+        api_probe_results = self.cluster_info.get("api_probe_results")
+
+        if api_probe_results and api_probe_results.get("enabled"):
+            print()
+            print("**Connectivity Tests:**")
+
+            summary = api_probe_results.get("summary", {})
+            total_tests = summary.get("total_tests", 0)
+            passed = summary.get("passed", 0)
+            failed = summary.get("failed", 0)
+            errors = summary.get("errors", 0)
+
+            # Show summary
+            if total_tests > 0:
+                print(
+                    f"- Total: {total_tests} tests "
+                    f"({passed} passed, {failed} failed, {errors} errors)"
+                )
+
+                # Build breakdown only showing non-zero values
+                breakdown_parts = []
+                if passed > 0:
+                    breakdown_parts.append(f"{passed} passed")
+                if failed > 0:
+                    breakdown_parts.append(f"{failed} failed")
+                if errors > 0:
+                    breakdown_parts.append(f"{errors} errors")
+
+                if breakdown_parts:
+                    breakdown = ", ".join(breakdown_parts)
+                    print(f"  Breakdown: {breakdown}")
+            else:
+                print("- No tests executed")
 
     def _print_detailed_report(self):
         """Print detailed report"""

@@ -293,7 +293,6 @@ class ConnectivityTester:
                 self.logger.warning("    Test result: %s", json.dumps(log_result, indent=2))
             else:
                 # In summary mode, show test result with status indicator
-                status = result["status"].upper()
                 if result["status"] == "passed":
                     self.logger.warning("    [PASSED] %s", test_name)
                 elif result["status"] == "failed":
