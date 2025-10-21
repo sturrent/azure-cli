@@ -1,0 +1,843 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-21T14:07:46.754249+00:00",
+    "version": "2.2.0",
+    "generated_by": "AKS Network Diagnostics Script (Python)"
+  },
+  "cluster": {
+    "name": "aks-overlay",
+    "resource_group": "aks-overlay-rg",
+    "subscription": "18fcfcaf-51b0-42c1-91ba-b14fe22f59dd",
+    "provisioning_state": "Succeeded",
+    "location": "canadacentral",
+    "node_resource_group": "MC_aks-overlay-rg_aks-overlay_canadacentral",
+    "network_profile": {
+      "network_plugin": "azure",
+      "network_plugin_mode": "overlay",
+      "network_policy": "none",
+      "network_dataplane": "azure",
+      "pod_cidr": "10.244.0.0/16",
+      "service_cidr": "10.0.0.0/16",
+      "dns_service_ip": "10.0.0.10",
+      "outbound_type": "loadBalancer",
+      "load_balancer_sku": "standard",
+      "load_balancer_profile": {
+        "managed_outbound_i_ps": {
+          "count": 1
+        },
+        "effective_outbound_i_ps": [
+          {
+            "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/publicIPAddresses/3eade215-a2c3-4daf-b58d-307eb703414d"
+          }
+        ],
+        "backend_pool_type": "nodeIPConfiguration"
+      },
+      "pod_cidrs": [
+        "10.244.0.0/16"
+      ],
+      "service_cidrs": [
+        "10.0.0.0/16"
+      ],
+      "ip_families": [
+        "IPv4"
+      ]
+    },
+    "api_server_access": {
+      "enable_private_cluster": false
+    }
+  },
+  "networking": {
+    "vnets": [
+      {
+        "name": "aks-overlay-rg-vnet",
+        "resource_group": "aks-overlay-rg",
+        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/virtualNetworks/aks-overlay-rg-vnet",
+        "address_space": [
+          "10.224.0.0/12"
+        ],
+        "subnets": [],
+        "peerings": []
+      }
+    ],
+    "outbound": {
+      "type": "loadBalancer",
+      "configured_public_ips": [
+        "130.107.45.124"
+      ],
+      "effective_outbound": {
+        "mechanism": "loadBalancer",
+        "overridden_by_udr": false,
+        "effective_mechanism": "loadBalancer",
+        "virtual_appliance_ips": [],
+        "load_balancer_ips": [
+          "130.107.45.124"
+        ],
+        "warnings": [],
+        "description": "Traffic uses Load Balancer with public IP(s): 130.107.45.124"
+      },
+      "udr_analysis": null
+    },
+    "private_dns": {
+      "type": "none",
+      "is_private_cluster": false,
+      "private_dns_zone": null,
+      "analysis": "Public cluster - private DNS not required",
+      "vnet_dns_servers": [],
+      "vnet_dns_config": "azure-default"
+    },
+    "api_server_access": {
+      "private_cluster": false,
+      "authorized_ip_ranges": [],
+      "disable_run_command": false,
+      "analysis": {
+        "ip_range_restriction": "none"
+      },
+      "security_findings": [
+        {
+          "severity": "medium",
+          "issue": "Unrestricted public access",
+          "description": "API server is publicly accessible without IP restrictions",
+          "recommendation": "Consider enabling authorized IP ranges or converting to a private cluster"
+        }
+      ],
+      "access_restrictions": {
+        "model": "unrestricted_public",
+        "description": "Public cluster with unrestricted access",
+        "implications": [
+          "[WARNING] API server is publicly accessible from any IP",
+          "[WARNING] No network-level access restrictions",
+          "[NOTE] Security relies entirely on authentication and RBAC",
+          "[NOTE] Consider implementing IP restrictions for enhanced security"
+        ]
+      }
+    },
+    "vmss_configuration": [
+      {
+        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Compute/virtualMachineScaleSets/aks-agentpool-41785413-vmss",
+        "name": "aks-agentpool-41785413-vmss",
+        "type": "Microsoft.Compute/virtualMachineScaleSets",
+        "location": "canadacentral",
+        "tags": {
+          "aks-managed-azure-cni-overlay": "true",
+          "aks-managed-bootstrap-profile-acr-name": "",
+          "aks-managed-consolidated-additional-properties": "bac0457a-ab88-11f0-a355-0e57e1c6cb8a",
+          "aks-managed-createOperationID": "",
+          "aks-managed-creationSource": "vmssclient-aks-agentpool-41785413-vmss",
+          "aks-managed-enable-imds-restriction": "false",
+          "aks-managed-kubeletIdentityClientID": "35ef3f85-4ed4-482f-ac68-85518fa00e17",
+          "aks-managed-networkisolated-outbound-type": "",
+          "aks-managed-operationID": "190af451-0971-448b-9219-1ed76bca1b34",
+          "aks-managed-orchestrator": "Kubernetes:1.32.6",
+          "aks-managed-poolName": "agentpool",
+          "aks-managed-resourceNameSuffix": "17863964",
+          "aks-managed-ssh-access": "LocalUser"
+        },
+        "sku": {
+          "name": "Standard_D4ds_v5",
+          "tier": "Standard",
+          "capacity": 3
+        },
+        "identity": {
+          "type": "UserAssigned",
+          "user_assigned_identities": {
+            "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-overlay-agentpool": {
+              "principal_id": "73423ee9-afe9-43fa-960d-6f43a99a22cc",
+              "client_id": "35ef3f85-4ed4-482f-ac68-85518fa00e17"
+            }
+          }
+        },
+        "etag": "\"74\"",
+        "upgrade_policy": {
+          "mode": "Manual"
+        },
+        "virtual_machine_profile": {
+          "os_profile": {
+            "computer_name_prefix": "aks-agentpool-41785413-vmss",
+            "admin_username": "azureuser",
+            "linux_configuration": {
+              "disable_password_authentication": true,
+              "ssh": {
+                "public_keys": [
+                  {
+                    "path": "/home/azureuser/.ssh/authorized_keys",
+                    "key_data": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC8KGCoymNcYrx0Tn4ojVAJqTd59YoY2m0ZG5zwddlEwouWLBFqzaNWbS96QSZNqz25xwM/nIsR1C349pRcqVpqmUpfRePKhp+UYsTV7IiX7x3XKJybn0xa2pUphERVDyfj9cZ9XDI+pdcP5xMLZEf2Fxm4UHSzuQBF9TFJZ0IP8Vqf0xoX6FZx+W/FO+6oXvYstOZEyCijzmgJ1nbJiQ9yJ3/luZ1a4O97kM8KWt0QX3HesBFabb9IbGLLE6o+OTcqPpxqKX++NNg37Ga9aX8AuZ8QyOk60ZXpWX0O7GMHVE/s2z1Ra55N2bpylYOTA3Wepip1XEhWCWESwolQVAc23fW7eqC+xMwt9gcYkRP9rRVjlAj55BkxDpLAce5tRr0OeWf/On/BggQ7ZQlXxtWjmHy3HoV0Z3fSst7PG4oIjg2qybQD3e/w/UxUSrY5L3h5ExzkcN0kXch75ASx/RjQfn5MSCnQGfB77GBHv+fpe+yEW8pQTGtips1eeNgNclRdGrhA7vjasnGqsTtkojgPva6WPvtFseOHPeZf1R5e1S0wCmHZ8PlYhIBqrS215iJZB4dNnhsa7XFGNG04F9O4NgKNs7pg16WQlP/d3FYmcQnySlqS3+TSSbKnNN6H5uHHuzcgnPXlBh8zHa5YbLNcutq4fbRbxCb7f0QdYQ2fsQ==\n"
+                  }
+                ]
+              },
+              "provision_vm_agent": true
+            },
+            "secrets": [],
+            "allow_extension_operations": true,
+            "require_guest_provision_signal": true
+          },
+          "storage_profile": {
+            "image_reference": {
+              "id": "/subscriptions/109a5e88-712a-48ae-9078-9ca8b3c81345/resourceGroups/AKS-Ubuntu/providers/Microsoft.Compute/galleries/AKSUbuntu/images/2204gen2containerd/versions/202509.23.0"
+            },
+            "os_disk": {
+              "caching": "ReadOnly",
+              "create_option": "FromImage",
+              "diff_disk_settings": {
+                "option": "Local",
+                "placement": "ResourceDisk"
+              },
+              "disk_size_gb": 150,
+              "os_type": "Linux",
+              "managed_disk": {
+                "storage_account_type": "Standard_LRS"
+              }
+            },
+            "disk_controller_type": "SCSI"
+          },
+          "network_profile": {
+            "network_interface_configurations": [
+              {
+                "name": "aks-agentpool-41785413-vmss",
+                "primary": true,
+                "enable_accelerated_networking": true,
+                "disable_tcp_state_tracking": false,
+                "network_security_group": {
+                  "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg"
+                },
+                "dns_settings": {
+                  "dns_servers": []
+                },
+                "ip_configurations": [
+                  {
+                    "name": "ipconfig1",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/virtualNetworks/aks-overlay-rg-vnet/subnets/default"
+                    },
+                    "primary": true,
+                    "private_ip_address_version": "IPv4",
+                    "load_balancer_backend_address_pools": [
+                      {
+                        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes"
+                      },
+                      {
+                        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/aksOutboundBackendPool"
+                      }
+                    ]
+                  }
+                ],
+                "enable_ip_forwarding": true
+              }
+            ]
+          },
+          "extension_profile": {
+            "extensions": [
+              {
+                "name": "vmssCSE",
+                "publisher": "Microsoft.Azure.Extensions",
+                "type_properties_type": "CustomScript",
+                "type_handler_version": "2.0",
+                "auto_upgrade_minor_version": true,
+                "settings": {}
+              },
+              {
+                "name": "aks-agentpool-41785413-vmss-AKSLinuxBilling",
+                "publisher": "Microsoft.AKS",
+                "type_properties_type": "Compute.AKS.Linux.Billing",
+                "type_handler_version": "1.0",
+                "auto_upgrade_minor_version": true,
+                "settings": {}
+              },
+              {
+                "name": "AKSLinuxExtension",
+                "publisher": "Microsoft.AKS",
+                "type_properties_type": "Compute.AKS.Linux.AKSNode",
+                "type_handler_version": "1.342",
+                "auto_upgrade_minor_version": false,
+                "settings": {
+                  "disable-uu": "true",
+                  "enable-uu": "false",
+                  "node-exporter-tls": "false"
+                },
+                "suppress_failures": false
+              }
+            ],
+            "extensions_time_budget": "PT16M"
+          },
+          "time_created": "2025-10-17T22:31:05.93092Z"
+        },
+        "provisioning_state": "Updating",
+        "overprovision": false,
+        "do_not_run_extensions_on_overprovisioned_v_ms": false,
+        "unique_id": "a20f6ef2-4650-4e01-a698-2b0d4b5010b2",
+        "single_placement_group": false,
+        "platform_fault_domain_count": 1,
+        "orchestration_mode": "Uniform",
+        "time_created": "2025-08-01T22:20:29.226259Z"
+      }
+    ],
+    "nsg_configuration": {
+      "subnet_nsgs": [
+        {
+          "subnet_id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/virtualNetworks/aks-overlay-rg-vnet/subnets/default",
+          "subnet_name": "default",
+          "nsg_id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral",
+          "nsg_name": "aks-overlay-rg-vnet-default-nsg-canadacentral",
+          "rules": [
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/securityRules/sec_close",
+              "name": "sec_close",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "description": "Restrict outbound to the Internet",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "Internet",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 150,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/securityRules/AKS-outbound",
+              "name": "AKS-outbound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "description": "Allow AKS outbound",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "AzureCloud",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/securityRules/AllowContainerRegistry",
+              "name": "AllowContainerRegistry",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "description": "Allow Azure Container Registry and MCR access",
+              "protocol": "Tcp",
+              "source_port_range": "*",
+              "destination_port_range": "443",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "AzureContainerRegistry",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/securityRules/AllowInternetHTTPS",
+              "name": "AllowInternetHTTPS",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "description": "Allow HTTPS to Internet for MCR and package downloads",
+              "protocol": "Tcp",
+              "source_port_range": "*",
+              "destination_port_range": "443",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "Internet",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 105,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/securityRules/BlockInterNodeTraffic",
+              "name": "BlockInterNodeTraffic",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "description": "Test rule to block inter-node communication",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 120,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            }
+          ],
+          "default_rules": [
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/defaultSecurityRules/AllowVnetInBound",
+              "name": "AllowVnetInBound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/defaultSecurityRules/AllowAzureLoadBalancerInBound",
+              "name": "AllowAzureLoadBalancerInBound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from azure load balancer",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "AzureLoadBalancer",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/defaultSecurityRules/DenyAllInBound",
+              "name": "DenyAllInBound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all inbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/defaultSecurityRules/AllowVnetOutBound",
+              "name": "AllowVnetOutBound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/defaultSecurityRules/AllowInternetOutBound",
+              "name": "AllowInternetOutBound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to Internet",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "Internet",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/aks-overlay-rg/providers/Microsoft.Network/networkSecurityGroups/aks-overlay-rg-vnet-default-nsg-canadacentral/defaultSecurityRules/DenyAllOutBound",
+              "name": "DenyAllOutBound",
+              "etag": "W/\"48c8b110-e13e-40a3-a904-75571303ab6c\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all outbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            }
+          ]
+        }
+      ],
+      "nic_nsgs": [
+        {
+          "vmss_name": "aks-agentpool-41785413-vmss",
+          "nic_name": "aks-agentpool-41785413-vmss",
+          "nsg_id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg",
+          "nsg_name": "aks-agentpool-17863964-nsg",
+          "rules": [],
+          "default_rules": [
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg/defaultSecurityRules/AllowVnetInBound",
+              "name": "AllowVnetInBound",
+              "etag": "W/\"4a403e85-3437-4840-8e96-47109d248c8e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg/defaultSecurityRules/AllowAzureLoadBalancerInBound",
+              "name": "AllowAzureLoadBalancerInBound",
+              "etag": "W/\"4a403e85-3437-4840-8e96-47109d248c8e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from azure load balancer",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "AzureLoadBalancer",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg/defaultSecurityRules/DenyAllInBound",
+              "name": "DenyAllInBound",
+              "etag": "W/\"4a403e85-3437-4840-8e96-47109d248c8e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all inbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg/defaultSecurityRules/AllowVnetOutBound",
+              "name": "AllowVnetOutBound",
+              "etag": "W/\"4a403e85-3437-4840-8e96-47109d248c8e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg/defaultSecurityRules/AllowInternetOutBound",
+              "name": "AllowInternetOutBound",
+              "etag": "W/\"4a403e85-3437-4840-8e96-47109d248c8e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to Internet",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "Internet",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-overlay-rg_aks-overlay_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-17863964-nsg/defaultSecurityRules/DenyAllOutBound",
+              "name": "DenyAllOutBound",
+              "etag": "W/\"4a403e85-3437-4840-8e96-47109d248c8e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all outbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            }
+          ]
+        }
+      ],
+      "required_rules": {
+        "outbound": [
+          {
+            "name": "AKS_Registry_Access",
+            "protocol": "TCP",
+            "destination": "MicrosoftContainerRegistry",
+            "ports": [
+              "443"
+            ],
+            "description": "Access to Microsoft Container Registry"
+          },
+          {
+            "name": "AKS_Azure_Management",
+            "protocol": "TCP",
+            "destination": "AzureCloud",
+            "ports": [
+              "443"
+            ],
+            "description": "Azure management endpoints"
+          },
+          {
+            "name": "AKS_DNS",
+            "protocol": "UDP",
+            "destination": "*",
+            "ports": [
+              "53"
+            ],
+            "description": "DNS resolution"
+          },
+          {
+            "name": "AKS_NTP",
+            "protocol": "UDP",
+            "destination": "*",
+            "ports": [
+              "123"
+            ],
+            "description": "Network Time Protocol"
+          },
+          {
+            "name": "AKS_API_Server_Access",
+            "protocol": "TCP",
+            "destination": "*",
+            "ports": [
+              "443"
+            ],
+            "description": "Access to AKS API server"
+          }
+        ],
+        "inbound": [
+          {
+            "name": "AKS_Inter_Node_Communication",
+            "protocol": "*",
+            "source": "VirtualNetwork",
+            "ports": [
+              "*"
+            ],
+            "description": "Communication between cluster nodes"
+          },
+          {
+            "name": "AKS_Load_Balancer",
+            "protocol": "*",
+            "source": "AzureLoadBalancer",
+            "ports": [
+              "*"
+            ],
+            "description": "Azure Load Balancer health probes"
+          }
+        ]
+      },
+      "blocking_rules": [
+        {
+          "nsg_name": "aks-overlay-rg-vnet-default-nsg-canadacentral",
+          "rule_name": "sec_close",
+          "priority": 150,
+          "direction": "Outbound",
+          "protocol": "*",
+          "destination": "Internet",
+          "ports": "*",
+          "impact": "Could block AKS management traffic",
+          "is_overridden": true,
+          "overridden_by": [
+            {
+              "rule_name": "AllowContainerRegistry",
+              "priority": 100,
+              "destination": "AzureContainerRegistry",
+              "ports": "443",
+              "protocol": "Tcp"
+            },
+            {
+              "rule_name": "AllowInternetHTTPS",
+              "priority": 105,
+              "destination": "Internet",
+              "ports": "443",
+              "protocol": "Tcp"
+            }
+          ],
+          "effective_severity": "warning"
+        }
+      ],
+      "inter_node_communication": {
+        "status": "potential_issues",
+        "issues": [
+          {
+            "nsg_name": "aks-overlay-rg-vnet-default-nsg-canadacentral",
+            "location": "subnet",
+            "blocking_rules": [
+              {
+                "rule_name": "BlockInterNodeTraffic",
+                "priority": 120,
+                "source": "VirtualNetwork",
+                "destination": "VirtualNetwork",
+                "protocol": "*",
+                "ports": "*"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "routing_analysis": {
+      "outbound_type": "loadBalancer",
+      "udr_analysis": null
+    }
+  },
+  "diagnostics": {
+    "api_connectivity_probe": {
+      "skipped": true,
+      "reason": "Not requested"
+    },
+    "failure_analysis": {
+      "enabled": false
+    },
+    "findings": [
+      {
+        "severity": "medium",
+        "code": "API_UNRESTRICTED_PUBLIC",
+        "message": "API server access: Unrestricted public access - API server is publicly accessible without IP restrictions",
+        "recommendation": "Consider enabling authorized IP ranges or converting to a private cluster"
+      },
+      {
+        "severity": "warning",
+        "code": "NSG_BLOCKING_AKS_TRAFFIC",
+        "message": "NSG rule 'sec_close' could block AKS traffic, but higher-priority allow rules override it: AllowContainerRegistry, AllowInternetHTTPS",
+        "recommendation": "Rule is currently ineffective due to higher-priority rules. Consider removing or adjusting priority 150 for cleaner NSG configuration."
+      },
+      {
+        "severity": "warning",
+        "code": "NSG_INTER_NODE_BLOCKING",
+        "message": "NSG 'aks-overlay-rg-vnet-default-nsg-canadacentral' on subnet has 1 rule(s) that may block inter-node communication",
+        "recommendation": "Ensure VirtualNetwork traffic is allowed between cluster nodes for proper functionality"
+      },
+      {
+        "severity": "warning",
+        "code": "NSG_INTER_NODE_BLOCKED",
+        "message": "NSG 'aks-overlay-rg-vnet-default-nsg-canadacentral' has rules that may block inter-node communication",
+        "recommendation": "Review blocking rules in NSG on subnet",
+        "details": {
+          "nsg_name": "aks-overlay-rg-vnet-default-nsg-canadacentral",
+          "blocking_rules": [
+            {
+              "rule_name": "BlockInterNodeTraffic",
+              "priority": 120,
+              "source": "VirtualNetwork",
+              "destination": "VirtualNetwork",
+              "protocol": "*",
+              "ports": "*"
+            }
+          ]
+        }
+      },
+      {
+        "severity": "warning",
+        "code": "NSG_POTENTIAL_BLOCK",
+        "message": "NSG rule 'sec_close' in 'aks-overlay-rg-vnet-default-nsg-canadacentral' may block AKS traffic but is overridden",
+        "recommendation": "Verify that override rules are correctly configured",
+        "details": {
+          "nsg_name": "aks-overlay-rg-vnet-default-nsg-canadacentral",
+          "rule_name": "sec_close",
+          "priority": 150,
+          "direction": "Outbound",
+          "protocol": "*",
+          "destination": "Internet",
+          "ports": "*",
+          "impact": "Could block AKS management traffic",
+          "is_overridden": true,
+          "overridden_by": [
+            {
+              "rule_name": "AllowContainerRegistry",
+              "priority": 100,
+              "destination": "AzureContainerRegistry",
+              "ports": "443",
+              "protocol": "Tcp"
+            },
+            {
+              "rule_name": "AllowInternetHTTPS",
+              "priority": 105,
+              "destination": "Internet",
+              "ports": "443",
+              "protocol": "Tcp"
+            }
+          ],
+          "effective_severity": "warning"
+        }
+      }
+    ]
+  }
+}

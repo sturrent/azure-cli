@@ -21,8 +21,8 @@ Phase 6 focuses on comprehensive integration testing of the `az aks net-diagnost
 - ✅ Category 1: Basic Execution Tests - **COMPLETE** (6/6 tests passed)
 - ✅ Category 2: Cluster-Specific Tests - **COMPLETE** (15/15 tests passed)
 - 🟡 Category 3-7: In progress
-- 🐛 Bugs Found: 16
-- ✅ Bugs Fixed: 16
+- 🐛 Bugs Found: 19
+- ✅ Bugs Fixed: 19
 - 📊 Success Rate: 100%
 
 ---
@@ -604,6 +604,52 @@ az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --json-report
   - Running cluster (aks-api-connection): Executes connectivity tests ✅
 - **Status:** ✅ FIXED
 - **Commit:** 5818502a91
+
+#### Bug #17: RouteTableAnalyzer Not Integrated into Orchestrator
+- **Severity:** High
+- **Location:** `orchestrator.py` - RouteTableAnalyzer never instantiated or called
+- **Error:** UDR analysis completely missing from diagnostic workflow
+- **Root Cause:** RouteTableAnalyzer was copied from standalone tool but never integrated into orchestrator phases
+- **Impact:** User-Defined Routes (UDRs) not analyzed, firewall routing scenarios not detected, critical network configuration gaps missed
+- **Discovery:** User reported aks-overlay cluster has firewall UDR (0.0.0.0/0 → 192.168.11.1) but no warning generated
+- **Fix:** 
+  - Added RouteTableAnalyzer import to orchestrator
+  - Created Phase 3 for route table analysis (between VNet and outbound analysis)
+  - Renumbered all phases from 1/8-8/8 to 1/9-9/9
+  - Added route_table_analysis to outbound_analysis["udr_analysis"] for misconfiguration_analyzer
+  - Updated report_generator signature to accept route_table_analysis parameter
+- **Files Modified:**
+  - `orchestrator.py`: Added import, Phase 3, parameter passing
+  - `report_generator.py`: Added route_table_analysis parameter and instance variable
+- **Status:** ✅ FIXED
+- **Commit:** (combined with Bug #18-19)
+
+#### Bug #18: Route Table Field Case Sensitivity Mismatch
+- **Severity:** Medium  
+- **Location:** `route_table_analyzer.py` line 120
+- **Error:** Analyzer checking for "vnet_subnet_id" but SDK may return "vnetSubnetId" (camelCase)
+- **Root Cause:** Inconsistent handling of Azure SDK field naming conventions
+- **Impact:** Could miss subnet IDs depending on data source (cluster.agent_pool_profiles vs agent_pools_client.list())
+- **Fix:**
+  - Modified `_get_unique_subnet_ids()` to check both camelCase and snake_case
+  - `subnet_id = pool.get("vnetSubnetId") or pool.get("vnet_subnet_id")`
+- **Note:** Testing revealed SDK actually uses snake_case consistently, but dual check added for robustness
+- **Status:** ✅ FIXED  
+- **Commit:** (combined with Bug #17 and #19)
+
+#### Bug #19: Wrong Dictionary Key for Network Client
+- **Severity:** Critical
+- **Location:** `orchestrator.py` line 143
+- **Error:** `'NoneType' object has no attribute 'subnets'` / `'dict' object has no attribute 'subnets'`
+- **Root Cause:** RouteTableAnalyzer instantiated with `clients.get('network')` but correct key is `'network_client'`
+- **Impact:** RouteTableAnalyzer received None instead of NetworkManagementClient, causing all subnet lookups to fail
+- **Discovery:** After fixing Bug #17-18, UDR analysis still returned empty results. Debug logging revealed network_client was None.
+- **Fix:** Changed `clients.get('network')` to `clients.get('network_client')` on line 143
+- **Testing:**
+  - Before fix: 0 route tables found, 0 findings
+  - After fix: 1 route table (sec-udr) found, 2 UDR warnings generated
+- **Status:** ✅ FIXED
+- **Commit:** (combined with Bug #17-18)
 
 ---
 

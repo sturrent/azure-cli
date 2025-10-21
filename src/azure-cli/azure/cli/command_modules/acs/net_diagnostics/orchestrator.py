@@ -33,6 +33,9 @@ from azure.cli.command_modules.acs.net_diagnostics.outbound_analyzer import (
 from azure.cli.command_modules.acs.net_diagnostics.report_generator import (
     ReportGenerator
 )
+from azure.cli.command_modules.acs.net_diagnostics.route_table_analyzer import (
+    RouteTableAnalyzer
+)
 
 
 def run_diagnostics(  # pylint: disable=too-many-locals
@@ -115,7 +118,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     api_probe_results: Optional[Dict[str, Any]] = None
 
     # Phase 1: Collect cluster information
-    logger.warning("[1/8] Collecting cluster information...")
+    logger.warning("[1/9] Collecting cluster information...")
     collector = ClusterDataCollector(
         aks_client=aks_client,
         agent_pools_client=agent_pools_client,
@@ -131,11 +134,20 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     agent_pools = cluster_data["agent_pools"]
 
     # Phase 2: Analyze VNet configuration
-    logger.warning("[2/8] Analyzing VNet configuration...")
+    logger.warning("[2/9] Analyzing VNet configuration...")
     vnets_analysis = collector.collect_vnet_info(agent_pools)
 
-    # Phase 3: Analyze outbound connectivity
-    logger.warning("[3/8] Analyzing outbound connectivity...")
+    # Phase 3: Analyze User Defined Routes (UDRs)
+    logger.warning("[3/9] Analyzing Route Tables (UDRs)...")
+    route_table_analyzer = RouteTableAnalyzer(
+        agent_pools=agent_pools,
+        network_client=clients.get('network_client'),
+        logger=logger
+    )
+    route_table_analysis = route_table_analyzer.analyze()
+
+    # Phase 4: Analyze outbound connectivity
+    logger.warning("[4/9] Analyzing outbound connectivity...")
     outbound_analyzer = OutboundConnectivityAnalyzer(
         cluster_info=cluster_info,
         agent_pools=agent_pools,
@@ -144,13 +156,16 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     )
     outbound_analysis = outbound_analyzer.analyze(show_details=details)
     outbound_ips = outbound_analyzer.get_outbound_ips()
+    
+    # Add UDR analysis to outbound analysis (expected by misconfiguration analyzer)
+    outbound_analysis["udr_analysis"] = route_table_analysis
 
-    # Phase 4: Analyze VMSS configuration
-    logger.warning("[4/8] Analyzing VMSS configuration...")
+    # Phase 5: Analyze VMSS configuration
+    logger.warning("[5/9] Analyzing VMSS configuration...")
     vmss_analysis = collector.collect_vmss_info(cluster_info)
 
-    # Phase 5: Analyze NSG configuration
-    logger.warning("[5/8] Analyzing Network Security Groups...")
+    # Phase 6: Analyze NSG configuration
+    logger.warning("[6/9] Analyzing Network Security Groups...")
     nsg_analyzer = NSGAnalyzer(
         clients=clients,
         cluster_info=cluster_info,
@@ -159,13 +174,13 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     )
     nsg_analysis = nsg_analyzer.analyze()
 
-    # Phase 6: Analyze Private DNS configuration
-    logger.warning("[6/8] Analyzing Private DNS configuration...")
+    # Phase 7: Analyze Private DNS configuration
+    logger.warning("[7/9] Analyzing Private DNS configuration...")
     dns_analyzer = DNSAnalyzer(clients=clients, cluster_info=cluster_info, logger=logger)
     private_dns_analysis = dns_analyzer.analyze()
 
-    # Phase 7: Analyze API server access
-    logger.warning("[7/8] Analyzing API server access configuration...")
+    # Phase 8: Analyze API server access
+    logger.warning("[8/9] Analyzing API server access configuration...")
     api_server_analyzer = APIServerAccessAnalyzer(
         cluster_info=cluster_info,
         outbound_ips=outbound_ips,
@@ -174,9 +189,9 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     )
     api_server_access_analysis = api_server_analyzer.analyze()
 
-    # Phase 8: Run connectivity tests (if enabled)
+    # Phase 9: Run connectivity tests (if enabled)
     if probe_test:
-        logger.warning("[8/8] Running connectivity tests (probe mode enabled)...")
+        logger.warning("[9/9] Running connectivity tests (probe mode enabled)...")
         connectivity_tester = ConnectivityTester(
             cluster_info=cluster_info,
             clients=clients,
@@ -189,7 +204,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         )
     else:
         logger.warning(
-            "[8/8] Skipping connectivity tests "
+            "[9/9] Skipping connectivity tests "
             "(use --probe-test to enable)"
         )
         api_probe_results = {"skipped": True, "reason": "Not requested"}
@@ -233,6 +248,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         cluster_info=cluster_info,
         findings=findings,
         vnets_analysis=vnets_analysis,
+        route_table_analysis=route_table_analysis,
         outbound_analysis=outbound_analysis,
         outbound_ips=outbound_ips,
         private_dns_analysis=private_dns_analysis,

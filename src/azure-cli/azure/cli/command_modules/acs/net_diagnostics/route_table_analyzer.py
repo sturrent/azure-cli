@@ -115,7 +115,8 @@ class RouteTableAnalyzer:  # pylint: disable=too-few-public-methods
         """Extract unique subnet IDs from agent pools"""
         subnet_ids = set()
         for pool in self.agent_pools:
-            subnet_id = pool.get("vnet_subnet_id")
+            # Try both camelCase and snake_case
+            subnet_id = pool.get("vnetSubnetId") or pool.get("vnet_subnet_id")
             if subnet_id and subnet_id != "null":
                 subnet_ids.add(subnet_id)
         return subnet_ids

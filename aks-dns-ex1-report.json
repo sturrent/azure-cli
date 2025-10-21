@@ -1,0 +1,819 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-21T13:53:14.368014+00:00",
+    "version": "2.2.0",
+    "generated_by": "AKS Network Diagnostics Script (Python)"
+  },
+  "cluster": {
+    "name": "aks-dns-ex1",
+    "resource_group": "aks-dns-ex1-rg",
+    "subscription": "18fcfcaf-51b0-42c1-91ba-b14fe22f59dd",
+    "provisioning_state": "Succeeded",
+    "location": "canadacentral",
+    "node_resource_group": "MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral",
+    "network_profile": {
+      "network_plugin": "azure",
+      "network_policy": "none",
+      "network_dataplane": "azure",
+      "service_cidr": "172.16.0.0/16",
+      "dns_service_ip": "172.16.0.10",
+      "outbound_type": "loadBalancer",
+      "load_balancer_sku": "standard",
+      "load_balancer_profile": {
+        "managed_outbound_i_ps": {
+          "count": 1
+        },
+        "effective_outbound_i_ps": [
+          {
+            "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/publicIPAddresses/15ace5df-3e11-4d14-8849-df2263ff6ff4"
+          }
+        ],
+        "backend_pool_type": "nodeIPConfiguration"
+      },
+      "service_cidrs": [
+        "172.16.0.0/16"
+      ],
+      "ip_families": [
+        "IPv4"
+      ]
+    },
+    "api_server_access": {}
+  },
+  "networking": {
+    "vnets": [
+      {
+        "name": "aks-vnet",
+        "resource_group": "vnet-aks-dns-ex1-rg",
+        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet",
+        "address_space": [
+          "10.0.0.0/8"
+        ],
+        "subnets": [],
+        "peerings": []
+      }
+    ],
+    "outbound": {
+      "type": "loadBalancer",
+      "configured_public_ips": [
+        "4.239.163.96"
+      ],
+      "effective_outbound": {
+        "mechanism": "loadBalancer",
+        "overridden_by_udr": false,
+        "effective_mechanism": "loadBalancer",
+        "virtual_appliance_ips": [],
+        "load_balancer_ips": [
+          "4.239.163.96"
+        ],
+        "warnings": [],
+        "description": "Traffic uses Load Balancer with public IP(s): 4.239.163.96"
+      },
+      "udr_analysis": null
+    },
+    "private_dns": {
+      "type": "none",
+      "is_private_cluster": false,
+      "private_dns_zone": null,
+      "analysis": "No API server access profile found - not a private cluster",
+      "vnet_dns_servers": [
+        "168.63.129.16",
+        "1.1.1.1",
+        "8.8.8.8"
+      ],
+      "vnet_dns_config": "custom"
+    },
+    "api_server_access": {
+      "private_cluster": false,
+      "authorized_ip_ranges": [],
+      "disable_run_command": false,
+      "analysis": {
+        "ip_range_restriction": "none"
+      },
+      "security_findings": [],
+      "access_restrictions": {}
+    },
+    "vmss_configuration": [
+      {
+        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Compute/virtualMachineScaleSets/aks-nodepool1-32811823-vmss",
+        "name": "aks-nodepool1-32811823-vmss",
+        "type": "Microsoft.Compute/virtualMachineScaleSets",
+        "location": "canadacentral",
+        "tags": {
+          "aks-managed-bootstrap-profile-acr-name": "",
+          "aks-managed-consolidated-additional-properties": "41065c4e-ab83-11f0-b8d7-46d885f8bf85",
+          "aks-managed-createOperationID": "2e73e969-a5a8-419a-a411-38deeca5c09d",
+          "aks-managed-creationSource": "vmssclient-aks-nodepool1-32811823-vmss",
+          "aks-managed-enable-imds-restriction": "false",
+          "aks-managed-kubeletIdentityClientID": "1c663a9e-db3e-4f17-b4bb-2f8817fc8ab3",
+          "aks-managed-networkisolated-outbound-type": "",
+          "aks-managed-orchestrator": "Kubernetes:1.32.7",
+          "aks-managed-poolName": "nodepool1",
+          "aks-managed-resourceNameSuffix": "36334887",
+          "aks-managed-ssh-access": "LocalUser"
+        },
+        "sku": {
+          "name": "standard_d2s_v3",
+          "tier": "Standard",
+          "capacity": 0
+        },
+        "identity": {
+          "type": "UserAssigned",
+          "user_assigned_identities": {
+            "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-dns-ex1-agentpool": {
+              "principal_id": "78b7c972-b425-440e-ad08-a135761bcea2",
+              "client_id": "1c663a9e-db3e-4f17-b4bb-2f8817fc8ab3"
+            }
+          }
+        },
+        "etag": "\"9\"",
+        "upgrade_policy": {
+          "mode": "Manual"
+        },
+        "virtual_machine_profile": {
+          "os_profile": {
+            "computer_name_prefix": "aks-nodepool1-32811823-vmss",
+            "admin_username": "azureuser",
+            "linux_configuration": {
+              "disable_password_authentication": true,
+              "ssh": {
+                "public_keys": [
+                  {
+                    "path": "/home/azureuser/.ssh/authorized_keys",
+                    "key_data": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDc6MAv9bHjzT9/I4b9a+O+6rghteKmPYuXapx/PY/oSPpX2+juxAEY7O7+TVXEKQWfbgg7PrNis/fXywUZmFa41bRE4vRrEzcy43mvO4UJeeB57ezqQfJxU3Gq3ShlCBKNtduXjafpsqYQTeFEvwjeSRdjEbvtjDtIaZ76wzjfUWKvrUh8U7lsVHn6xtgHKeXqFSt0LapsbksUobdXN+o8tx1ozxTIh9EKTJWY0RSbJA9JeWynBA67Anh7NDsN0xulc0GcHY2FHUTQadiwKk8fTxARiP22jXmKSvaKpoDv0iwTBYfK6HatJB39/iXBNq2NKW/Rj1KfFKvcbgS/hoVuWS8QkerXdXNDeZ+Rq2lYrDr6b0wTkFYwHWi+//oUVlUKIR+NQJNLD9uLF0Sne1+9iZDyWwMgUuM6G4pQLTgP55YK90FOxOuQZBNXCkvmR1qrMR6mGZte1FfPCibpRZ2VR7TlJaVlO7X+IhF8+bsC5VWuvOV/YWi80NhlWaJDmgrMc2LB+7BLeIuCzVruOw8dOjpY355x8NIj5UzxbTdyzDDnFs0aw+DLDewiH6YSkCmG7HBtwcWAqw6RTOBS0YIXfYUag3D6XweWPFLCbLBFeqiUi/LeFFHtQ/x5Z0N8FSC4eUkKMGe1SOBp3dEOkkKkdqEjRkQxzl58RXKwH7kycw==\n"
+                  }
+                ]
+              },
+              "provision_vm_agent": true
+            },
+            "secrets": [],
+            "allow_extension_operations": true,
+            "require_guest_provision_signal": true
+          },
+          "storage_profile": {
+            "image_reference": {
+              "id": "/subscriptions/109a5e88-712a-48ae-9078-9ca8b3c81345/resourceGroups/AKS-Ubuntu/providers/Microsoft.Compute/galleries/AKSUbuntu/images/2204gen2containerd/versions/202509.23.0"
+            },
+            "os_disk": {
+              "caching": "ReadOnly",
+              "create_option": "FromImage",
+              "disk_size_gb": 128,
+              "os_type": "Linux",
+              "managed_disk": {
+                "storage_account_type": "Premium_LRS"
+              }
+            },
+            "disk_controller_type": "SCSI"
+          },
+          "network_profile": {
+            "network_interface_configurations": [
+              {
+                "name": "aks-nodepool1-32811823-vmss",
+                "primary": true,
+                "enable_accelerated_networking": true,
+                "disable_tcp_state_tracking": false,
+                "network_security_group": {
+                  "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg"
+                },
+                "dns_settings": {
+                  "dns_servers": []
+                },
+                "ip_configurations": [
+                  {
+                    "name": "ipconfig1",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "primary": true,
+                    "private_ip_address_version": "IPv4",
+                    "load_balancer_backend_address_pools": [
+                      {
+                        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/aksOutboundBackendPool"
+                      },
+                      {
+                        "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "ipconfig2",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig3",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig4",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig5",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig6",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig7",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig8",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig9",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig10",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig11",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig12",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig13",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig14",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig15",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig16",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig17",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig18",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig19",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig20",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig21",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig22",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig23",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig24",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig25",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig26",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig27",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig28",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  },
+                  {
+                    "name": "ipconfig29",
+                    "subnet": {
+                      "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet"
+                    },
+                    "private_ip_address_version": "IPv4"
+                  }
+                ],
+                "enable_ip_forwarding": false
+              }
+            ]
+          },
+          "extension_profile": {
+            "extensions": [
+              {
+                "name": "vmssCSE",
+                "publisher": "Microsoft.Azure.Extensions",
+                "type_properties_type": "CustomScript",
+                "type_handler_version": "2.0",
+                "auto_upgrade_minor_version": true,
+                "settings": {}
+              },
+              {
+                "name": "aks-nodepool1-32811823-vmss-AKSLinuxBilling",
+                "publisher": "Microsoft.AKS",
+                "type_properties_type": "Compute.AKS.Linux.Billing",
+                "type_handler_version": "1.0",
+                "auto_upgrade_minor_version": true,
+                "settings": {}
+              },
+              {
+                "name": "AKSLinuxExtension",
+                "publisher": "Microsoft.AKS",
+                "type_properties_type": "Compute.AKS.Linux.AKSNode",
+                "type_handler_version": "1.342",
+                "auto_upgrade_minor_version": false,
+                "settings": {
+                  "disable-uu": "true",
+                  "enable-uu": "false",
+                  "node-exporter-tls": "false"
+                },
+                "suppress_failures": false
+              }
+            ],
+            "extensions_time_budget": "PT16M"
+          },
+          "time_created": "2025-10-17T18:04:19.289495Z"
+        },
+        "provisioning_state": "Succeeded",
+        "overprovision": false,
+        "do_not_run_extensions_on_overprovisioned_v_ms": false,
+        "unique_id": "07b514fd-b22e-4a16-9f62-36a8506bdf83",
+        "single_placement_group": false,
+        "platform_fault_domain_count": 1,
+        "orchestration_mode": "Uniform",
+        "time_created": "2025-10-17T18:02:27.913182Z"
+      }
+    ],
+    "nsg_configuration": {
+      "subnet_nsgs": [
+        {
+          "subnet_id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/virtualNetworks/aks-vnet/subnets/aks-subnet",
+          "subnet_name": "aks-subnet",
+          "nsg_id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral",
+          "nsg_name": "aks-vnet-aks-subnet-nsg-canadacentral",
+          "rules": [],
+          "default_rules": [
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral/defaultSecurityRules/AllowVnetInBound",
+              "name": "AllowVnetInBound",
+              "etag": "W/\"53be4b50-4205-4f36-95e7-32810a27aa2e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral/defaultSecurityRules/AllowAzureLoadBalancerInBound",
+              "name": "AllowAzureLoadBalancerInBound",
+              "etag": "W/\"53be4b50-4205-4f36-95e7-32810a27aa2e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from azure load balancer",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "AzureLoadBalancer",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral/defaultSecurityRules/DenyAllInBound",
+              "name": "DenyAllInBound",
+              "etag": "W/\"53be4b50-4205-4f36-95e7-32810a27aa2e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all inbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral/defaultSecurityRules/AllowVnetOutBound",
+              "name": "AllowVnetOutBound",
+              "etag": "W/\"53be4b50-4205-4f36-95e7-32810a27aa2e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral/defaultSecurityRules/AllowInternetOutBound",
+              "name": "AllowInternetOutBound",
+              "etag": "W/\"53be4b50-4205-4f36-95e7-32810a27aa2e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to Internet",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "Internet",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/vnet-aks-dns-ex1-rg/providers/Microsoft.Network/networkSecurityGroups/aks-vnet-aks-subnet-nsg-canadacentral/defaultSecurityRules/DenyAllOutBound",
+              "name": "DenyAllOutBound",
+              "etag": "W/\"53be4b50-4205-4f36-95e7-32810a27aa2e\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all outbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            }
+          ]
+        }
+      ],
+      "nic_nsgs": [
+        {
+          "vmss_name": "aks-nodepool1-32811823-vmss",
+          "nic_name": "aks-nodepool1-32811823-vmss",
+          "nsg_id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg",
+          "nsg_name": "aks-agentpool-36334887-nsg",
+          "rules": [],
+          "default_rules": [
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg/defaultSecurityRules/AllowVnetInBound",
+              "name": "AllowVnetInBound",
+              "etag": "W/\"539ff2ad-c710-4652-8779-d9745cf33ab0\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg/defaultSecurityRules/AllowAzureLoadBalancerInBound",
+              "name": "AllowAzureLoadBalancerInBound",
+              "etag": "W/\"539ff2ad-c710-4652-8779-d9745cf33ab0\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow inbound traffic from azure load balancer",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "AzureLoadBalancer",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg/defaultSecurityRules/DenyAllInBound",
+              "name": "DenyAllInBound",
+              "etag": "W/\"539ff2ad-c710-4652-8779-d9745cf33ab0\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all inbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Inbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg/defaultSecurityRules/AllowVnetOutBound",
+              "name": "AllowVnetOutBound",
+              "etag": "W/\"539ff2ad-c710-4652-8779-d9745cf33ab0\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to all VMs in VNET",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "VirtualNetwork",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "VirtualNetwork",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65000,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg/defaultSecurityRules/AllowInternetOutBound",
+              "name": "AllowInternetOutBound",
+              "etag": "W/\"539ff2ad-c710-4652-8779-d9745cf33ab0\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Allow outbound traffic from all VMs to Internet",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "Internet",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Allow",
+              "priority": 65001,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            },
+            {
+              "id": "/subscriptions/18fcfcaf-51b0-42c1-91ba-b14fe22f59dd/resourceGroups/MC_aks-dns-ex1-rg_aks-dns-ex1_canadacentral/providers/Microsoft.Network/networkSecurityGroups/aks-agentpool-36334887-nsg/defaultSecurityRules/DenyAllOutBound",
+              "name": "DenyAllOutBound",
+              "etag": "W/\"539ff2ad-c710-4652-8779-d9745cf33ab0\"",
+              "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+              "description": "Deny all outbound traffic",
+              "protocol": "*",
+              "source_port_range": "*",
+              "destination_port_range": "*",
+              "source_address_prefix": "*",
+              "source_address_prefixes": [],
+              "destination_address_prefix": "*",
+              "destination_address_prefixes": [],
+              "source_port_ranges": [],
+              "destination_port_ranges": [],
+              "access": "Deny",
+              "priority": 65500,
+              "direction": "Outbound",
+              "provisioning_state": "Succeeded"
+            }
+          ]
+        }
+      ],
+      "required_rules": {
+        "outbound": [
+          {
+            "name": "AKS_Registry_Access",
+            "protocol": "TCP",
+            "destination": "MicrosoftContainerRegistry",
+            "ports": [
+              "443"
+            ],
+            "description": "Access to Microsoft Container Registry"
+          },
+          {
+            "name": "AKS_Azure_Management",
+            "protocol": "TCP",
+            "destination": "AzureCloud",
+            "ports": [
+              "443"
+            ],
+            "description": "Azure management endpoints"
+          },
+          {
+            "name": "AKS_DNS",
+            "protocol": "UDP",
+            "destination": "*",
+            "ports": [
+              "53"
+            ],
+            "description": "DNS resolution"
+          },
+          {
+            "name": "AKS_NTP",
+            "protocol": "UDP",
+            "destination": "*",
+            "ports": [
+              "123"
+            ],
+            "description": "Network Time Protocol"
+          },
+          {
+            "name": "AKS_API_Server_Access",
+            "protocol": "TCP",
+            "destination": "*",
+            "ports": [
+              "443"
+            ],
+            "description": "Access to AKS API server"
+          }
+        ],
+        "inbound": [
+          {
+            "name": "AKS_Inter_Node_Communication",
+            "protocol": "*",
+            "source": "VirtualNetwork",
+            "ports": [
+              "*"
+            ],
+            "description": "Communication between cluster nodes"
+          },
+          {
+            "name": "AKS_Load_Balancer",
+            "protocol": "*",
+            "source": "AzureLoadBalancer",
+            "ports": [
+              "*"
+            ],
+            "description": "Azure Load Balancer health probes"
+          }
+        ]
+      },
+      "blocking_rules": [],
+      "inter_node_communication": {
+        "status": "ok",
+        "issues": []
+      }
+    },
+    "routing_analysis": {
+      "outbound_type": "loadBalancer",
+      "udr_analysis": null
+    }
+  },
+  "diagnostics": {
+    "api_connectivity_probe": {
+      "skipped": true,
+      "reason": "Not requested"
+    },
+    "failure_analysis": {
+      "enabled": false
+    },
+    "findings": [
+      {
+        "severity": "warning",
+        "code": "CLUSTER_STOPPED",
+        "message": "Cluster is in stopped state",
+        "recommendation": "Start the cluster using 'az aks start' before running connectivity tests or accessing cluster resources"
+      },
+      {
+        "severity": "warning",
+        "code": "DNS_RESOLUTION_FAILED",
+        "message": "VNet is using custom DNS servers (1.1.1.1, 8.8.8.8) which may impact CoreDNS functionality",
+        "recommendation": "Custom DNS servers should forward Azure service queries to Azure DNS (168.63.129.16). Current DNS servers: 168.63.129.16, 1.1.1.1, 8.8.8.8. If experiencing DNS resolution issues, verify that:\n1. Custom DNS can reach Azure DNS (168.63.129.16)\n2. Azure-specific domains are forwarded correctly\n3. DNS forwarding is configured for '*.azmk8s.io' and other Azure services",
+        "details": {
+          "vnetName": "aks-vnet",
+          "vnetResourceGroup": "vnet-aks-dns-ex1-rg",
+          "customDnsServers": [
+            "1.1.1.1",
+            "8.8.8.8"
+          ],
+          "hasAzureDns": true
+        }
+      }
+    ]
+  }
+}

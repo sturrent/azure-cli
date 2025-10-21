@@ -26,6 +26,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         cluster_info: Dict[str, Any],
         findings: List[Dict[str, Any]],
         vnets_analysis: List[Dict[str, Any]],
+        route_table_analysis: Dict[str, Any],
         outbound_analysis: Dict[str, Any],
         outbound_ips: List[str],
         private_dns_analysis: Dict[str, Any],
@@ -47,6 +48,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             cluster_info: Cluster configuration dictionary
             findings: List of diagnostic findings
             vnets_analysis: VNet analysis results
+            route_table_analysis: Route table/UDR analysis results
             outbound_analysis: Outbound connectivity analysis
             outbound_ips: List of outbound public IPs
             private_dns_analysis: Private DNS analysis results
@@ -64,6 +66,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         self.cluster_info = cluster_info
         self.findings = findings
         self.vnets_analysis = vnets_analysis
+        self.route_table_analysis = route_table_analysis
         self.outbound_analysis = outbound_analysis
         self.outbound_ips = outbound_ips
         self.private_dns_analysis = private_dns_analysis
