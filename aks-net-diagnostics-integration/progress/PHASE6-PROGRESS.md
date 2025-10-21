@@ -2,7 +2,7 @@
 
 **Status:** 🟡 IN PROGRESS  
 **Started:** October 20, 2025  
-**Last Updated:** October 20, 2025 21:30 UTC
+**Last Updated:** October 20, 2025 22:10 UTC
 
 ---
 
@@ -16,6 +16,13 @@ Phase 6 focuses on comprehensive integration testing of the `az aks net-diagnost
 - Test with different cluster configurations
 - Validate output formats and error handling
 - Compare results with standalone tool
+
+**Current Status:**
+- ✅ Category 1: Basic Execution Tests - **COMPLETE** (6/6 tests passed)
+- 🟡 Category 2-7: In progress
+- 🐛 Bugs Found: 16
+- ✅ Bugs Fixed: 16
+- 📊 Success Rate: 100%
 
 ---
 
@@ -43,6 +50,9 @@ Three test clusters available for validation:
 ## Testing Progress
 
 ### Category 1: Basic Execution Tests
+**Status:** ✅ COMPLETE (6/6 tests passed)
+
+All basic execution tests completed successfully. All parameter combinations work correctly.
 
 #### Test 1.1: Basic Command Execution
 **Status:** ✅ PASSED  
@@ -104,37 +114,100 @@ Tip: Use --details flag for detailed analysis
 ---
 
 #### Test 1.2: Execution with --details Flag
-**Status:** ⏳ PENDING  
+**Status:** ✅ PASSED  
 **Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --details`  
-**Expected:** Detailed analysis output with verbose information
+**Duration:** ~10 seconds  
+**Result:** SUCCESS
+
+**Output Highlights:**
+- Full cluster overview table with all properties
+- Detailed network configuration (Service CIDR, Pod CIDR, DNS IP)
+- Complete NSG analysis with all rules listed
+- Individual findings with full messages and recommendations
+- Well-formatted markdown report (~122 lines)
+
+**Validation:**
+- ✅ Detailed cluster information displayed
+- ✅ Network security group rules listed
+- ✅ All findings shown with recommendations
+- ✅ Markdown formatting correct
 
 ---
 
 #### Test 1.3: Execution with --json-report Flag
-**Status:** ⏳ PENDING  
-**Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --json-report`  
-**Expected:** Output in JSON format for automation
+**Status:** ✅ PASSED  
+**Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --json-report /tmp/aks-overlay-report.json`  
+**Duration:** ~10 seconds  
+**Result:** SUCCESS
+
+**Output Highlights:**
+- JSON file created successfully (38KB)
+- Console shows summary report
+- Message displayed: "[DOC] JSON report saved to: /tmp/aks-overlay-report.json"
+- JSON contains 6 findings in `.diagnostics.findings[]`
+
+**JSON Structure Validation:**
+- ✅ `.metadata` - timestamp, version, generated_by
+- ✅ `.cluster` - name, resource group, subscription, network profile
+- ✅ `.networking` - vnets, outbound config, NSGs
+- ✅ `.diagnostics.findings[]` - all findings with severity, code, message, recommendation
 
 ---
 
 #### Test 1.4: Execution with --probe-test Flag
-**Status:** ⏳ PENDING  
+**Status:** ✅ PASSED  
 **Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --probe-test`  
-**Expected:** Include connectivity probe tests
+**Duration:** ~10 seconds  
+**Result:** SUCCESS
+
+**Bug Found:** Bug #16 - Connectivity tester method name mismatch (FIXED)
+
+**Output Highlights (Stopped Cluster):**
+- Phase 8 shows: "Running connectivity tests (probe mode enabled)..."
+- Warning displayed: "Connectivity tests skipped: Cluster is in stopped state. Start cluster with 'az aks start' to run connectivity tests."
+- Graceful handling of stopped cluster state
+
+**Output Highlights (Running Cluster - aks-api-connection):**
+- Connectivity tests execute successfully
+- DNS resolution tests run
+- Warnings shown for failed DNS resolutions with custom DNS
+
+**Validation:**
+- ✅ Flag recognized and enables probe tests
+- ✅ Clear warning when cluster is stopped
+- ✅ Tests execute on running clusters
+- ✅ DNS resolution issues detected and reported
 
 ---
 
 #### Test 1.5: Combined Flags
-**Status:** ⏳ PENDING  
-**Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --details --json-report`  
-**Expected:** Detailed output in JSON format
+**Status:** ✅ PASSED  
+**Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --details --json-report /tmp/test1-5.json`  
+**Duration:** ~10 seconds  
+**Result:** SUCCESS
+
+**Validation:**
+- ✅ Detailed markdown output displayed to console
+- ✅ JSON report saved to file (38KB)
+- ✅ Both outputs contain complete data
+- ✅ No conflicts between flags
 
 ---
 
 #### Test 1.6: All Flags
-**Status:** ⏳ PENDING  
-**Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --details --probe-test --json-report`  
-**Expected:** Complete diagnostic with all features enabled
+**Status:** ✅ PASSED  
+**Command:** `az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --details --probe-test --json-report /tmp/test1-6.json`  
+**Duration:** ~10 seconds  
+**Result:** SUCCESS
+
+**Validation:**
+- ✅ Detailed markdown output displayed
+- ✅ Connectivity tests attempted (skipped due to stopped cluster)
+- ✅ JSON report saved with all data
+- ✅ All flags work together without conflicts
+- ✅ JSON contains 6 findings
+
+**Summary:** All flag combinations work correctly ✅
 
 ---
 
@@ -160,10 +233,10 @@ Tip: Use --details flag for detailed analysis
 
 ## Bug Tracker
 
-### Bugs Found and Fixed During Test 1.1
+### Bugs Found and Fixed During Testing
 
-**Total Bugs:** 15  
-**Bugs Fixed:** 15  
+**Total Bugs:** 16  
+**Bugs Fixed:** 16  
 **Success Rate:** 100%
 
 #### Bug #1: Client Architecture - managed_clusters Attribute
@@ -294,6 +367,22 @@ Tip: Use --details flag for detailed analysis
 - **Status:** ✅ FIXED
 - **Commit:** 17c7a034a0
 
+#### Bug #16: Connectivity Tester Method Name Mismatch
+- **Severity:** High
+- **Location:** `orchestrator.py` line 187
+- **Error:** `AttributeError: 'ConnectivityTester' object has no attribute 'run_connectivity_tests'`
+- **Root Cause:** orchestrator calling wrong method name - `run_connectivity_tests(resource_group_name)` instead of `test_connectivity(enable_probes=bool)`
+- **Impact:** --probe-test flag completely broken, connectivity tests never execute
+- **Fix:** 
+  - Changed method call from `run_connectivity_tests()` to `test_connectivity()`
+  - Updated parameter from `resource_group_name` to `enable_probes=True`
+  - Matches actual ConnectivityTester API signature
+- **Testing:**
+  - Stopped cluster (aks-overlay): Shows clear warning, graceful skip ✅
+  - Running cluster (aks-api-connection): Executes connectivity tests ✅
+- **Status:** ✅ FIXED
+- **Commit:** 5818502a91
+
 ---
 
 ## Git Commits
@@ -331,8 +420,27 @@ Tip: Use --details flag for detailed analysis
    - Collect and convert Finding objects from individual analyzers
    - 1 file changed, 13 insertions(+)
 
-**Total Commits:** 7  
-**Total Changes:** ~800 lines added/modified
+8. **422eaf6d40** - "Phase 6: Update progress documentation with Bug #15"
+   - Updated PHASE6-PROGRESS.md with Bug #15 details
+   - 1 file changed, 53 insertions(+), 9 deletions(-)
+
+9. **fffc2079f6** - "Phase 6: Fix indentation consistency for findings output"
+   - Added 2-space indentation to findings logged by add_finding()
+   - Improves visual consistency across all diagnostic messages
+   - 1 file changed, 4 insertions(+), 3 deletions(-)
+
+10. **5818502a91** - "Phase 6: Fix connectivity tester method name (Bug #16)"
+    - Fixed bug #16 (incorrect method call to ConnectivityTester)
+    - Changed run_connectivity_tests() → test_connectivity(enable_probes=True)
+    - 1 file changed, 2 insertions(+), 2 deletions(-)
+
+11. **aef2d6166c** - "Phase 6: Improve warning message when probe tests are skipped"
+    - Changed INFO to WARNING for better user feedback
+    - Added helpful remediation message for stopped clusters
+    - 1 file changed, 4 insertions(+), 1 deletion(-)
+
+**Total Commits:** 11  
+**Total Changes:** ~900 lines added/modified
 
 ---
 
