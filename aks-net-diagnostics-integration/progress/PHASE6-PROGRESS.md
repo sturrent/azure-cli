@@ -412,15 +412,93 @@ az aks net-diagnostics -n aks-overlay -g aks-overlay-rg --json-report
 - ✅ Multiple findings with context
 - ✅ Power state: "Running"
 
-**Summary:** Overlay networking and NSG rule analysis working excellently ✅
+**Test 2.3.4: UDR Detection with Firewall Route**
+**Scenario:** Added route table "sec-udr" with default route to virtual appliance  
+**Route Configuration:**
+- Route name: to-firewall
+- Address prefix: 0.0.0.0/0
+- Next hop type: VirtualAppliance
+- Next hop IP: 192.168.11.1
+
+```bash
+az aks net-diagnostics -n aks-overlay -g aks-overlay-rg
+```
+**Duration:** ~8 seconds  
+**Result:** SUCCESS - **CRITICAL ISSUE DETECTED**
+
+**Findings Generated:**
+- ✅ WARNING: Default route (0.0.0.0/0) redirects traffic through virtual appliance at 192.168.11.1
+- ✅ Route table "sec-udr" detected and analyzed
+- ✅ Impact on Azure services and container registries noted
+- ✅ Recommendation to verify appliance configuration
+- ✅ INFO: UDR analysis summary (1 route table, 1 virtual appliance route)
+
+**Detailed Output Shows:**
+- Route Tables Found: 1
+- Route Table: sec-udr (Resource Group: aks-overlay-rg)
+- Critical Routes: 1 (to-firewall 0.0.0.0/0 → 192.168.11.1 VirtualAppliance)
+- Virtual Appliance Routes: 1
+
+**Test 2.3.5: UDR + Authorized IP Ranges (CRITICAL Configuration Conflict!)**
+**Scenario:** Enabled Authorized IP ranges on API server with existing UDR firewall route  
+**Configuration:**
+- Authorized IP ranges: 45.65.190.26/32
+- UDR default route: 0.0.0.0/0 → 192.168.11.1 (VirtualAppliance)
+- Outbound type: loadBalancer
+- Load Balancer IP: 130.107.45.124
+
+```bash
+az aks net-diagnostics -n aks-overlay -g aks-overlay-rg
+```
+**Duration:** ~8 seconds  
+**Result:** SUCCESS - **CRITICAL PRODUCTION ISSUE DETECTED** 🚨
+
+**Findings Generated:**
+1. **[CRITICAL] API_SECURITY_ISSUE** - UDR overrides Load Balancer with authorized IP ranges
+   - ✅ Detected UDR routes traffic through virtual appliance (192.168.11.1)
+   - ✅ Identified Load Balancer outbound type with IP: 130.107.45.124
+   - ✅ Detected authorized IP ranges: 45.65.190.26/32
+   - ✅ **Impact**: Nodes cannot reach API server if firewall public IP not in authorized ranges
+   - ✅ **Recommendation**: Add virtual appliance's public IP to authorized ranges (NOT the load balancer IP)
+
+2. **[WARNING] UDR_DEFAULT_ROUTE_VA** - Default route through virtual appliance
+   - ✅ Affects: Azure services, container registries
+   
+3. **[WARNING] API_SECURITY_ISSUE** - API server access restricted
+   - ✅ 1 configured authorized IP range detected
+
+**API Server Access Analysis Shows:**
+```
+[!] CRITICAL: User Defined Route (UDR) overrides Load Balancer outbound
+[!] Traffic is routed through virtual appliance: 192.168.11.1
+[!] The virtual appliance's PUBLIC IP must be in authorized ranges
+[!] Load Balancer IPs are NOT effective due to UDR override
+[!] Nodes cannot reach API server if firewall/appliance public IP is not authorized
+```
+
+**Validation:**
+- ✅ **Detected critical production-breaking misconfiguration**
+- ✅ Clear explanation of UDR override behavior with authorized IP ranges
+- ✅ Specific guidance: Firewall public IP (not LB IP) must be in authorized ranges
+- ✅ Impact assessment: Cluster would fail if this configuration applied
+- ✅ **Real-world scenario**: Common mistake combining firewall + API security
+
+**Business Value Demonstrated:**
+- ⭐ **Prevents cluster outages** before they happen
+- ⭐ **Saves troubleshooting time** - catches non-obvious configuration conflicts
+- ⭐ **Clear remediation** with specific IPs and steps
+- ⭐ **Security validation** - ensures hardening doesn't break connectivity
+
+**Summary:** Overlay networking, UDR analysis, and critical configuration conflict detection working **perfectly** ✅
 
 ---
 
 **Category 2 Overall Results:**
-- **Tests Run:** 15 (3 clusters × 5 tests each, minus 2 skipped probe tests)
-- **Tests Passed:** 15
+- **Tests Run:** 17 (3 clusters with extended UDR testing on aks-overlay)
+- **Tests Passed:** 17
 - **Tests Failed:** 0
 - **Success Rate:** 100%
+- **Critical Issues Detected:** 1 (UDR + Authorized IP ranges conflict)
 - **New Bugs Found:** 0
 - **Key Capabilities Validated:**
   - ✅ Private cluster detection and analysis
