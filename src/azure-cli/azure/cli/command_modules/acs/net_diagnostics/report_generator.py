@@ -267,6 +267,34 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                     for ip in self.outbound_ips:
                         print(f"  - {ip}")
 
+        # Show connectivity test results if probe tests were run
+        if self.api_probe_results and isinstance(self.api_probe_results, dict):
+            # Check if tests were skipped
+            if self.api_probe_results.get("skipped"):
+                # Don't show anything if skipped (user didn't request --probe-test)
+                pass
+            elif self.api_probe_results.get("enabled"):
+                # Tests were run
+                print()
+                print("**Connectivity Tests:**")
+                
+                summary = self.api_probe_results.get("summary", {})
+                total_tests = summary.get("total_tests", 0)
+                passed = summary.get("passed", 0)
+                failed = summary.get("failed", 0)
+                errors = summary.get("errors", 0)
+                
+                if total_tests == 0:
+                    print("- No connectivity tests were performed")
+                elif failed == 0 and errors == 0:
+                    print(f"- [OK] All {passed}/{total_tests} connectivity tests passed")
+                else:
+                    print(
+                        f"- [WARNING] {failed + errors}/{total_tests} "
+                        f"connectivity tests failed"
+                    )
+                    print(f"  - Passed: {passed}, Failed: {failed}, Errors: {errors}")
+
         print()
         print("**Findings Summary:**")
 
