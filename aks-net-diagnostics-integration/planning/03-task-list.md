@@ -516,26 +516,30 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 6: Integration Testing & Validation ⏳ IN PROGRESS (3% complete)
+## Phase 6: Integration Testing & Validation ⏳ IN PROGRESS (21% complete)
 
 **Duration:** Started October 20, 2025  
-**Completion:** Test 1.1 ✅ PASSED (1/29 tests complete)  
-**Commit:** fdb423c890 (11 bug fixes)
+**Completion:** Category 1 ✅ COMPLETE (6/29 tests complete - 21%)  
+**Latest Commits:** 12 commits (fdb423c890 → 4f653440bf)
 
 ### 6.0 Real Cluster Testing ⏳ IN PROGRESS
 
 **Test Clusters Available:**
 1. **aks-overlay** (aks-overlay-rg) - Overlay networking, stopped state
-2. **aks-api-connection** (aks-api-connection-lab1-rg) - API server connectivity
-3. **aks-dns-ex1** (aks-dns-ex1-rg) - DNS configuration
+2. **aks-api-connection** (aks-api-connection-lab1-rg) - API server connectivity, running
+3. **aks-dns-ex1** (aks-dns-ex1-rg) - DNS configuration, stopped
 
 **Testing Progress:**
+
+**Category 1: Basic Execution Tests** ✅ COMPLETE (6/6)
 - [x] Test 1.1: Basic execution (`-n aks-overlay -g aks-overlay-rg`) ✅ PASSED
-- [ ] Test 1.2: With --details flag
-- [ ] Test 1.3: With --json-report flag
-- [ ] Test 1.4: With --probe-test flag
-- [ ] Test 1.5: Combined flags (--details --json-report)
-- [ ] Test 1.6: All flags (--details --probe-test --json-report)
+- [x] Test 1.2: With --details flag ✅ PASSED
+- [x] Test 1.3: With --json-report flag ✅ PASSED
+- [x] Test 1.4: With --probe-test flag ✅ PASSED (Bug #16 found & fixed)
+- [x] Test 1.5: Combined flags (--details --json-report) ✅ PASSED
+- [x] Test 1.6: All flags (--details --probe-test --json-report) ✅ PASSED
+
+**Category 2-7:** ⏳ PENDING
 - [ ] Test 2.x: Cluster-specific scenarios (aks-api-connection, aks-dns-ex1)
 - [ ] Test 3.x: Output format tests
 - [ ] Test 4.x: Error handling tests
@@ -544,20 +548,19 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Test 7.x: Edge cases
 
 **Total Tests Planned:** 29  
-**Tests Complete:** 1 (3%)  
-**Bugs Found:** 11  
-**Bugs Fixed:** 11 (100%)
+**Tests Complete:** 6 (21%)  
+**Bugs Found:** 16  
+**Bugs Fixed:** 16 (100%)
 
-**Test 1.1 Results:**
-- ✅ Command executed successfully
-- ✅ All 10 diagnostic phases completed
-- ✅ Proper summary report generated
-- ✅ Network configuration detected correctly
-- ✅ Outbound IP identified (130.107.45.124)
-- ✅ Warning for stopped cluster displayed
-- ⏱️ Execution time: ~10 seconds
+**Category 1 Summary:**
+- ✅ All parameter flags work correctly
+- ✅ --details produces comprehensive markdown report (122 lines)
+- ✅ --json-report creates valid JSON file (38KB) with complete data
+- ✅ --probe-test executes connectivity tests (with proper warnings when cluster stopped)
+- ✅ All flag combinations work without conflicts
+- ⏱️ Average execution time: ~10 seconds per test
 
-**Bugs Fixed in Test 1.1:**
+**All Bugs Fixed:**
 1. aks_client.managed_clusters.get() signature
 2-3. agent_pools_client architecture
 4. network_client API version (2022-01-01 → 2023-04-01)
@@ -566,12 +569,16 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 8-9. agent_pools_client in custom.py
 10. NSGAnalyzer logger parameter
 11. DNSAnalyzer.analyze() signature
+12-13. Logger integration with Azure CLI
+14. NSG analyzer resource ID parsing
+15. Findings not appearing in summary report
+16. Connectivity tester method name mismatch
 
 **Documentation:**
 - [x] Created PHASE6-TESTING.md (29 test plan)
-- [x] Created PHASE6-PROGRESS.md (detailed progress report)
+- [x] Created PHASE6-PROGRESS.md (detailed progress report, updated)
 
-**Status:** ⏳ IN PROGRESS - Ready for Test 1.2
+**Status:** ⏳ IN PROGRESS - Category 1 complete, ready for Category 2
 
 ### 6.1 Unit Tests
 - [ ] Create `src/azure-cli/azure/cli/command_modules/acs/tests/latest/test_aks_net_diagnostics.py`
@@ -710,9 +717,9 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 | Phase 3: Authentication Adapter | 3-4 hours | ~3 hours | ✅ COMPLETE | Client factories, command handler |
 | Phase 4: Copy Diagnostic Modules | 8-12 hours | ~8 hours | ✅ COMPLETE | All 14 modules integrated |
 | Phase 5: Register Command & Parameters | 2-3 hours | ~1 hour | ✅ COMPLETE | Command registration |
-| Phase 6: Integration Testing | 4-6 hours | ~2 hours | ⏳ IN PROGRESS | Test 1.1 passed, 11 bugs fixed |
+| Phase 6: Integration Testing | 4-6 hours | ~4 hours | ⏳ IN PROGRESS | Category 1 complete (6/29 tests), 16 bugs fixed |
 | Phase 7: Documentation & Polish | 2-4 hours | TBD | ⏸️ NOT STARTED | Help text, examples |
-| **TOTAL (POC)** | **24-34 hours** | **~20 hours** | **58% complete** | 1 of 29 tests passing |
+| **TOTAL (POC)** | **24-34 hours** | **~24 hours** | **71% complete** | 6 of 29 tests passing (21%) |
 
 ---
 
@@ -720,25 +727,39 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ## Current Status
 
-**Last Updated:** October 20, 2025 20:10 UTC  
+**Last Updated:** October 20, 2025 22:15 UTC  
 **Current Phase:** Phase 6 (Integration Testing & Validation)  
-**Next Action:** Run Test 1.2 (with --details flag)
+**Next Action:** Begin Category 2 (Cluster-Specific Tests)
 
 **Latest Achievements:**
-- ✅ Test 1.1 PASSED - Basic command execution working
-- ✅ 11 integration bugs found and fixed (100% success rate)
-- ✅ All 10 diagnostic phases executing successfully
-- ✅ Proper summary report generation validated
-- ✅ Command tested with real AKS cluster (aks-overlay)
+- ✅ Category 1: Basic Execution Tests - COMPLETE (6/6 tests passed)
+- ✅ All parameter flags working correctly (--details, --json-report, --probe-test)
+- ✅ All flag combinations tested and validated
+- ✅ 16 integration bugs found and fixed (100% success rate)
+- ✅ Comprehensive JSON report generation (38KB with complete data)
+- ✅ Detailed markdown output (122 lines)
+- ✅ Connectivity tests validated on both stopped and running clusters
 
-**Bug Fix Summary (Test 1.1):**
+**Category 1 Tests Completed:**
+1. Basic execution ✅
+2. --details flag ✅
+3. --json-report flag ✅
+4. --probe-test flag ✅
+5. Combined flags (--details --json-report) ✅
+6. All flags combined ✅
+
+**Bug Fix Summary (All 16 Bugs):**
 - Client architecture issues (aks_client, agent_pools_client)
-- Network client API version compatibility (2022-01-01 → 2023-04-01)
-- Analyzer dependency injection (subscription_id, credential)
-- Parameter type mismatches (list vs dict)
-- Method signature corrections (analyze(), __init__())
+- Network client API version compatibility
+- Analyzer dependency injection
+- Logger integration with Azure CLI
+- NSG resource ID parsing
+- Findings collection and display
+- Connectivity tester method naming
+- Output indentation consistency
+- Probe test warning messages
 
-**Blockers:** None - Ready for Test 1.2
+**Blockers:** None - Ready for Category 2
 
 **Documentation:**
 - ✅ PHASE6-TESTING.md - Comprehensive 29-test plan
