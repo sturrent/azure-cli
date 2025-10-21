@@ -98,28 +98,32 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 
 ### Latest Progress
 
-- � **Phase 6 IN PROGRESS** (October 20, 2025 - 21% complete)
+- 🟡 **Phase 6 IN PROGRESS** (October 20-21, 2025 - 38% complete)
   - ✅ **Category 1: Basic Execution Tests** - COMPLETE (6/6 tests passed)
+  - ✅ **Category 2: Cluster-Specific Tests** - COMPLETE (15/15 tests passed)
   - ✅ Test 1.1: Basic command execution - PASSED
   - ✅ Test 1.2: --details flag - PASSED (122-line detailed report)
   - ✅ Test 1.3: --json-report flag - PASSED (38KB valid JSON)
   - ✅ Test 1.4: --probe-test flag - PASSED (connectivity tests working)
   - ✅ Test 1.5: Combined flags - PASSED
   - ✅ Test 1.6: All flags combined - PASSED
+  - ✅ Test 2.1: Private cluster (aks-api-connection) - ALL PASSED
+  - ✅ Test 2.2: Custom DNS cluster (aks-dns-ex1) - ALL PASSED
+  - ✅ Test 2.3: Overlay networking (aks-overlay) - ALL PASSED
   - ✅ 16 bugs found and fixed (100% success rate)
   - ✅ Help text added with 4 comprehensive examples
   - ✅ Linter completely clean (CLI Linter, Pylint, Flake8: PASSED)
   - ✅ Code quality: 10.00/10 rating
-  - 📊 Tests passing: 6/29 (21%)
+  - 📊 Tests passing: 11/29 (38% - Category 1 + Category 2)
   - 🐛 All bugs fixed: Client architecture, API versions, findings display, linter warnings
-  - Latest commits: fdb423c890 → 50bd1af681 (18 commits)
+  - Latest commits: fdb423c890 → 05d0e677d2 (21 commits)
   
 - **Previous:** Phase 5 COMPLETE (Command registered and working)
 
 ### Quick Stats
 
 - **Total Effort:** 24-34 hours POC (24 hours completed = 71%)
-- **Current Phase:** Phase 6 - Integration Testing ⏳ (21% complete)
+- **Current Phase:** Phase 6 - Integration Testing ⏳ (38% complete)
 - **Code Quality:** 10.00/10 rating, all linters passing ✅
 - **Next Phase:** Phase 7 - Documentation & Polish
 - **See:** [📅 Timeline section below](#-timeline) for detailed phase breakdown

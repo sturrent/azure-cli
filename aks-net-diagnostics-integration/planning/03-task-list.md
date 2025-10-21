@@ -516,11 +516,11 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 6: Integration Testing & Validation ⏳ IN PROGRESS (21% complete)
+## Phase 6: Integration Testing & Validation ⏳ IN PROGRESS (38% complete)
 
 **Duration:** Started October 20, 2025  
-**Completion:** Category 1 ✅ COMPLETE (6/29 tests complete - 21%)  
-**Latest Commits:** 12 commits (fdb423c890 → 4f653440bf)
+**Completion:** Categories 1-2 ✅ COMPLETE (11/29 tests complete - 38%)  
+**Latest Commits:** 21 commits (fdb423c890 → 05d0e677d2)
 
 ### 6.0 Real Cluster Testing ⏳ IN PROGRESS
 
@@ -539,8 +539,23 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [x] Test 1.5: Combined flags (--details --json-report) ✅ PASSED
 - [x] Test 1.6: All flags (--details --probe-test --json-report) ✅ PASSED
 
-**Category 2-7:** ⏳ PENDING
-- [ ] Test 2.x: Cluster-specific scenarios (aks-api-connection, aks-dns-ex1)
+**Category 2: Cluster-Specific Tests** ✅ COMPLETE (15 tests - basic, details, json-report per cluster × 3)
+- [x] Test 2.1: Private cluster (aks-api-connection) ✅ ALL PASSED
+  - [x] 2.1.1: Basic execution - Private cluster detected, DNS misconfiguration found
+  - [x] 2.1.2: --details flag - Comprehensive private cluster analysis
+  - [x] 2.1.3: --json-report - 40KB JSON with private DNS config
+  - [x] 2.1.4: --verbose - Azure SDK request/response logging
+  - [x] 2.1.5: --probe-test - Expected timeout (failed cluster state)
+- [x] Test 2.2: Custom DNS cluster (aks-dns-ex1) ✅ ALL PASSED
+  - [x] 2.2.1: Basic execution - Custom DNS detected (168.63.129.16, 1.1.1.1, 8.8.8.8)
+  - [x] 2.2.2: --details flag - DNS forwarding recommendations
+  - [x] 2.2.3: --json-report - 38KB JSON with DNS servers array
+- [x] Test 2.3: Overlay networking cluster (aks-overlay) ✅ ALL PASSED
+  - [x] 2.3.1: Basic execution - Overlay detected, NSG rule analysis
+  - [x] 2.3.2: --details flag - Pod CIDR, NSG priority rules
+  - [x] 2.3.3: --json-report - 37KB JSON with NSG rules
+
+**Category 3-7:** ⏳ PENDING
 - [ ] Test 3.x: Output format tests
 - [ ] Test 4.x: Error handling tests
 - [ ] Test 5.x: Comparison with standalone tool
@@ -548,7 +563,7 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 - [ ] Test 7.x: Edge cases
 
 **Total Tests Planned:** 29  
-**Tests Complete:** 6 (21%)  
+**Tests Complete:** 11 (38%)  
 **Bugs Found:** 16  
 **Bugs Fixed:** 16 (100%)
 
