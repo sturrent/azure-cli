@@ -2747,3 +2747,38 @@ helps['aks machine show'] = """
        - name: Get IP Addresses, Hostname, Availability Zones for a specific machine in an agentpool
          text: az aks machine show --resource-group <rg> --cluster-name <clusterName> --nodepool-name <apName> --machine-name <machineName>
 """
+
+helps['aks net-diagnostics'] = """
+type: command
+short-summary: Run network diagnostics on an AKS cluster.
+long-summary: Analyzes cluster network configuration, NSG rules, DNS settings, and identifies common networking issues. Can optionally perform connectivity tests and export results to JSON.
+parameters:
+  - name: --name -n
+    type: string
+    short-summary: Name of the managed cluster.
+  - name: --resource-group -g
+    type: string
+    short-summary: Name of resource group containing the cluster.
+  - name: --details
+    type: bool
+    short-summary: Display detailed diagnostic output including cluster overview, network configuration, and NSG analysis.
+  - name: --probe-test
+    type: bool
+    short-summary: Run connectivity tests to API server and DNS endpoints (requires cluster to be running).
+  - name: --json-report
+    type: string
+    short-summary: Export full diagnostic results to a JSON file at the specified path.
+examples:
+  - name: Run basic network diagnostics on an AKS cluster.
+    text: az aks net-diagnostics --name MyManagedCluster --resource-group MyResourceGroup
+    crafted: true
+  - name: Run diagnostics with detailed output.
+    text: az aks net-diagnostics --name MyManagedCluster --resource-group MyResourceGroup --details
+    crafted: true
+  - name: Run diagnostics with connectivity tests.
+    text: az aks net-diagnostics --name MyManagedCluster --resource-group MyResourceGroup --probe-test
+    crafted: true
+  - name: Run full diagnostics and export results to JSON.
+    text: az aks net-diagnostics --name MyManagedCluster --resource-group MyResourceGroup --details --probe-test --json-report /tmp/diagnostics.json
+    crafted: true
+"""

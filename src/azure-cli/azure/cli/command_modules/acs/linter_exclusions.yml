@@ -221,4 +221,23 @@ aks nodepool upgrade:
       undrainable_node_behavior:
         rule_exclusions:
         - option_length_too_long
+aks net-diagnostics:
+  rule_exclusions:
+  - missing_command_test_coverage
+  parameters:
+      name:
+        rule_exclusions:
+        - missing_parameter_test_coverage
+      resource_group:
+        rule_exclusions:
+        - missing_parameter_test_coverage
+      details:
+        rule_exclusions:
+        - missing_parameter_test_coverage
+      probe_test:
+        rule_exclusions:
+        - missing_parameter_test_coverage
+      json_report:
+        rule_exclusions:
+        - missing_parameter_test_coverage
 ...
