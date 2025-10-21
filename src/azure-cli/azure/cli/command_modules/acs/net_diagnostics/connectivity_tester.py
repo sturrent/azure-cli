@@ -271,7 +271,7 @@ class ConnectivityTester:
                 self.probe_results["summary"]["errors"] += 1
                 continue
 
-            self.logger.info("  Running test: %s", test_name)
+            self.logger.warning("  Running test: %s", test_name)
             result = self._execute_vmss_test(vmss_instance, test)
             self.probe_results["tests"].append(result)
 
@@ -290,11 +290,16 @@ class ConnectivityTester:
                     log_result["stdout"] = log_result["stdout"].replace("\n", "\\n")
                 if log_result.get("stderr"):
                     log_result["stderr"] = log_result["stderr"].replace("\n", "\\n")
-                self.logger.info("    Test result: %s", json.dumps(log_result, indent=2))
+                self.logger.warning("    Test result: %s", json.dumps(log_result, indent=2))
             else:
-                # In summary mode, just show summary
+                # In summary mode, show test result with status indicator
                 status = result["status"].upper()
-                self.logger.info("    Result: %s - %s", status, result["analysis"])
+                if result["status"] == "passed":
+                    self.logger.warning("    [PASSED] %s", test_name)
+                elif result["status"] == "failed":
+                    self.logger.warning("    [FAILED] %s - %s", test_name, result["analysis"])
+                else:
+                    self.logger.warning("    [ERROR] %s - %s", test_name, result["analysis"])
 
             # Update summary
             self.probe_results["summary"]["total_tests"] += 1

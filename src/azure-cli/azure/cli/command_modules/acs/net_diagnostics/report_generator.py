@@ -293,7 +293,17 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                         f"- [WARNING] {failed + errors}/{total_tests} "
                         f"connectivity tests failed"
                     )
-                    print(f"  - Passed: {passed}, Failed: {failed}, Errors: {errors}")
+                    # Build breakdown showing only non-zero components
+                    breakdown_parts = []
+                    if passed > 0:
+                        breakdown_parts.append(f"Passed: {passed}")
+                    if failed > 0:
+                        breakdown_parts.append(f"Failed: {failed}")
+                    if errors > 0:
+                        breakdown_parts.append(f"Errors: {errors}")
+                    
+                    if breakdown_parts:
+                        print(f"  - {', '.join(breakdown_parts)}")
 
         print()
         print("**Findings Summary:**")
