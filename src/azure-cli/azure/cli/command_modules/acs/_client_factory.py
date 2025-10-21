@@ -62,21 +62,21 @@ def get_compute_client(cli_ctx, *_):
 
 def get_network_client(cli_ctx, subscription_id=None):
     """Get Network Management client for general network operations.
-    
+
     Uses NetworkManagementClient directly to ensure access to all network resources
     including virtual_networks, subnets, network_security_groups, etc.
     """
     from azure.mgmt.network import NetworkManagementClient
     from azure.cli.core._profile import Profile
-    
+
     profile = Profile(cli_ctx=cli_ctx)
     credential, subscription_id, _ = profile.get_login_credentials(subscription_id=subscription_id)
-    
+
     client = NetworkManagementClient(
         credential=credential,
         subscription_id=subscription_id
     )
-    
+
     return client
 
 

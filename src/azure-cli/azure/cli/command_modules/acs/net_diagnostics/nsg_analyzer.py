@@ -539,12 +539,12 @@ class NSGAnalyzer(BaseAnalyzer):
         if provider_index >= 0 and provider_index + 2 < len(parts):
             # Skip provider namespace, start with first resource type/name pair
             resource_parts = parts[provider_index + 2:]
-            
+
             # Process resource type/name pairs
             for i in range(0, len(resource_parts) - 1, 2):
                 resource_type = resource_parts[i]
                 resource_name = resource_parts[i + 1]
-                
+
                 # First pair is parent (e.g., virtualNetworks)
                 # Last pair is the actual resource (e.g., subnets)
                 if i == 0 and len(resource_parts) > 2:

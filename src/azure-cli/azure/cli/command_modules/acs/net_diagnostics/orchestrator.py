@@ -87,7 +87,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Setup logger if not provided
     if logger is None:
         logger = _setup_logging()
-    
+
     # Use warning level for progress messages so they show in Azure CLI
     logger.warning("Starting AKS network diagnostics for cluster: %s", cluster_name)
 
@@ -218,7 +218,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         logger.debug("Collecting %d findings from DNS analyzer", len(dns_analyzer.findings))
         # Convert Finding objects to dicts for report generator
         findings.extend([f.to_dict() for f in dns_analyzer.findings])
-    
+
     if hasattr(nsg_analyzer, 'findings') and nsg_analyzer.findings:
         logger.debug("Collecting %d findings from NSG analyzer", len(nsg_analyzer.findings))
         # Convert Finding objects to dicts for report generator

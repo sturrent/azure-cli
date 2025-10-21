@@ -3798,14 +3798,12 @@ def aks_net_diagnostics(
     from azure.cli.command_modules.acs._client_factory import (
         get_network_client,
         get_privatedns_client,
-        get_compute_client,
-        cf_agent_pools
+        get_compute_client
     )
     from azure.cli.command_modules.acs.net_diagnostics import run_diagnostics
-    from knack.log import get_logger
 
-    # Get Azure CLI logger
-    logger = get_logger(__name__)
+    # Get Azure CLI logger (already imported at module level)
+    # logger = get_logger(__name__)  # Using module-level logger instead
 
     # Get cluster information
     mc = client.get(resource_group_name, name)
@@ -3817,11 +3815,12 @@ def aks_net_diagnostics(
     subscription_id = get_subscription_id(cmd.cli_ctx)
 
     # Get credential for cross-subscription scenarios
-    from azure.cli.core._profile import Profile
+    # Profile already imported at module level
     profile = Profile(cli_ctx=cmd.cli_ctx)
     credential, _, _ = profile.get_login_credentials(subscription_id=subscription_id)
 
     # Create Azure SDK clients using CLI authentication
+    # cf_agent_pools already imported at module level
     agent_pools_client = cf_agent_pools(cmd.cli_ctx)
     network_client = get_network_client(cmd.cli_ctx, subscription_id)
     privatedns_client = get_privatedns_client(cmd.cli_ctx, subscription_id)
