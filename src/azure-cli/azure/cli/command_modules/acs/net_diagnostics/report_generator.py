@@ -301,9 +301,6 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
 
     def _print_outbound_configuration(self):
         """Print outbound IP configuration section"""
-        outbound_ips = self.cluster_info.get("network_profile", {}).get(
-            "load_balancer_profile", {}
-        ).get("effective_outbound_i_ps")
         effective_outbound = self.cluster_info.get("effective_outbound_type")
 
         # Check if we have LoadBalancer permission issues
@@ -312,7 +309,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             for f in self.findings
         )
 
-        if outbound_ips or effective_outbound:
+        if self.outbound_ips or effective_outbound:
             print()
             print("**Outbound Configuration:**")
 
@@ -336,13 +333,9 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 if has_lb_permission_issue:
                     # Permission issue prevents reading LoadBalancer details
                     print("- Load Balancer IPs: Unable to retrieve (insufficient permissions)")
-                elif outbound_ips:
+                elif self.outbound_ips:
                     # Regular load balancer with IPs
-                    ip_list = ", ".join([
-                        ip.get("id", "").split("/")[-1]
-                        for ip in outbound_ips
-                        if ip.get("id")
-                    ])
+                    ip_list = ", ".join(self.outbound_ips)
                     print(f"- Load Balancer IPs: {ip_list}")
             elif configured_type == "userDefinedRouting":
                 # Regular UDR
