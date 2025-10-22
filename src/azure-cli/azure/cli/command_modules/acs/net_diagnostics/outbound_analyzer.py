@@ -14,9 +14,12 @@ Adapted for Azure CLI integration.
 # pylint: disable=too-many-instance-attributes,too-many-nested-blocks
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+
+from .models import Finding, FindingCode, Severity
 
 
 class OutboundConnectivityAnalyzer:
@@ -54,6 +57,61 @@ class OutboundConnectivityAnalyzer:
         # Results storage
         self.outbound_ips: List[str] = []
         self.outbound_analysis: Dict[str, Any] = {}
+        self.findings: List[Finding] = []
+
+    def _check_authorization_error(
+        self,
+        error: HttpResponseError,
+        resource_type: str,
+        resource_group: str
+    ) -> bool:
+        """
+        Check if the error is an authorization failure and create a finding.
+
+        Args:
+            error: The HttpResponseError to check
+            resource_type: Type of resource (e.g., 'LoadBalancer')
+            resource_group: Resource group name
+
+        Returns:
+            True if this was an authorization error, False otherwise
+        """
+        error_message = str(error.message) if hasattr(error, 'message') else str(error)
+
+        if 'AuthorizationFailed' in error_message or 'authorization failed' in error_message.lower():
+            # Extract permission from error message if available
+            permission_match = re.search(
+                r"Microsoft\.\w+/[\w/]+/\w+",
+                error_message
+            )
+            missing_permission = permission_match.group(0) if permission_match else "Unknown permission"
+
+            # Build recommendation message
+            recommendation = (
+                f"Grant the 'Reader' role on resource group '{resource_group}' or assign a role with the "
+                f"'{missing_permission}' permission to access {resource_type} resources. "
+                f"Use: az role assignment create --role Reader --assignee <principal-id> "
+                f"--scope /subscriptions/<subscription-id>/resourceGroups/{resource_group}"
+            )
+
+            # Create finding
+            finding = Finding(
+                severity=Severity.WARNING,
+                code=FindingCode.PERMISSION_INSUFFICIENT_LB,
+                message=f"Incomplete {resource_type} Analysis - Missing permission to read {resource_group}",
+                recommendation=recommendation,
+                details={
+                    'resource_type': resource_type,
+                    'resource_group': resource_group,
+                    'missing_permission': missing_permission,
+                    'error': error_message
+                }
+            )
+            self.findings.append(finding)
+            self.logger.warning("  %s", finding.message)
+            return True
+
+        return False
 
     def analyze(self, show_details: bool = False) -> Dict[str, Any]:
         """
@@ -177,19 +235,32 @@ class OutboundConnectivityAnalyzer:
                         f"Traffic uses Load Balancer with public IP(s): {ip_list}"
                     )
                 else:
-                    effective_summary["warnings"].append(
-                        {
-                            "level": "error",
-                            "message": (
-                                "Load Balancer outbound type configured but no "
-                                "public IPs found"
-                            ),
-                            "impact": "Outbound connectivity may be broken",
-                        }
+                    # Check if missing IPs is due to permission issues
+                    has_lb_permission_issue = any(
+                        f.code == FindingCode.PERMISSION_INSUFFICIENT_LB
+                        for f in self.findings
                     )
-                    effective_summary["description"] = (
-                        "Load Balancer outbound configured but no public IPs detected"
-                    )
+                    
+                    if not has_lb_permission_issue:
+                        # Only report missing IPs if not due to permissions
+                        effective_summary["warnings"].append(
+                            {
+                                "level": "error",
+                                "message": (
+                                    "Load Balancer outbound type configured but no "
+                                    "public IPs found"
+                                ),
+                                "impact": "Outbound connectivity may be broken",
+                            }
+                        )
+                        effective_summary["description"] = (
+                            "Load Balancer outbound configured but no public IPs detected"
+                        )
+                    else:
+                        # Permission issue - set neutral description
+                        effective_summary["description"] = (
+                            "Load Balancer outbound type configured"
+                        )
             elif outbound_type == "userDefinedRouting":
                 if virtual_appliance_routes:
                     # Collect all virtual appliance IPs from routes
@@ -297,6 +368,10 @@ class OutboundConnectivityAnalyzer:
                 return
 
         except (ResourceNotFoundError, HttpResponseError) as e:
+            # Check if this is an authorization error
+            if isinstance(e, HttpResponseError):
+                if self._check_authorization_error(e, 'LoadBalancer', mc_rg):
+                    return  # Authorization error, finding already created
             self.logger.warning(
                 "Failed to list load balancers in %s: %s", mc_rg, e
             )

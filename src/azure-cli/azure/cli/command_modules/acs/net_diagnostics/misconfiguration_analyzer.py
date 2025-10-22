@@ -45,6 +45,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         nsg_analysis: Dict[str, Any],
         api_probe_results: Optional[Dict[str, Any]],
         vmss_analysis: List[Dict[str, Any]],
+        permission_findings: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[List[Dict[str, Any]], bool]:
         """
         Analyze cluster for misconfigurations and generate findings
@@ -58,6 +59,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
             nsg_analysis: NSG configuration analysis results
             api_probe_results: API connectivity probe results
             vmss_analysis: VMSS configuration analysis
+            permission_findings: Optional list of permission-related findings
 
         Returns:
             Tuple of (findings list, cluster_stopped flag)
@@ -65,6 +67,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         self.logger.info("Analyzing potential misconfigurations...")
 
         findings = []
+        permission_findings = permission_findings or []
 
         # Check cluster power state
         self._check_cluster_power_state(cluster_info, findings)
@@ -90,7 +93,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
             )
 
         # Check for missing outbound IPs
-        self._check_outbound_ips(cluster_info, outbound_ips, findings)
+        self._check_outbound_ips(cluster_info, outbound_ips, findings, permission_findings)
 
         # Check VNet configuration issues
         self._analyze_vnet_issues(vmss_analysis, findings)
@@ -216,14 +219,23 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         self,
         cluster_info: Dict[str, Any],
         outbound_ips: List[str],
-        findings: List[Dict[str, Any]]
+        findings: List[Dict[str, Any]],
+        permission_findings: List[Dict[str, Any]]
     ) -> None:
         """Check for missing outbound IPs"""
         network_profile = cluster_info.get("network_profile", {})
         outbound_type = network_profile.get("outbound_type", "loadBalancer")
 
+        # Check if we have LoadBalancer permission issues
+        has_lb_permission_issue = any(
+            f.get("code") == "PERMISSION_INSUFFICIENT_LB"
+            for f in permission_findings
+        )
+
         if (not outbound_ips and
-                outbound_type in ["loadBalancer", "managedNATGateway"]):
+                outbound_type in ["loadBalancer", "managedNATGateway"] and
+                not has_lb_permission_issue):
+            # Only report missing IPs if it's not due to permission issues
             findings.append({
                 "severity": "warning",
                 "code": "NO_OUTBOUND_IPS",

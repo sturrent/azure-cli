@@ -186,11 +186,15 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         if show_details:
             self._print_detailed_report()
         else:
-            self._print_summary_report(json_report_path)
+            self._print_summary_report(json_report_path, show_details)
 
         print("\n[OK] AKS network assessment completed successfully!")
 
-    def _print_summary_report(self, json_report_path: Optional[str] = None):
+    def _print_summary_report(
+        self,
+        json_report_path: Optional[str] = None,
+        show_details: bool = False
+    ):
         """Print summary report"""
         print("# AKS Network Assessment Summary")
         print()
@@ -229,17 +233,30 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         print()
         print("**Findings Summary:**")
 
+        # Separate permission findings from regular findings
+        permission_findings = [
+            f for f in self.findings
+            if f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
+        ]
         critical_findings = [
             f for f in self.findings
             if f.get("severity") in ["critical", "error"]
+            and not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
         ]
         warning_findings = [
             f for f in self.findings
             if f.get("severity") == "warning"
+            and not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
         ]
 
         if len(critical_findings) == 0 and len(warning_findings) == 0:
-            print("- [OK] No critical issues detected")
+            if permission_findings:
+                # When there are permission limitations, provide context
+                print("- [OK] No critical issues detected in analyzed components")
+                print("- [WARNING] Analysis incomplete - see Permission Limitations below")
+            else:
+                # Normal case with full analysis
+                print("- [OK] No critical issues detected")
         else:
             # Show critical/error findings
             for finding in critical_findings:
@@ -260,6 +277,23 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 message = finding.get("message", "Unknown issue")
                 print(f"- [WARNING] {message}")
 
+            # If there are also permission limitations, add a note
+            if permission_findings:
+                print("- [WARNING] Analysis incomplete - see Permission Limitations below")
+
+        # Show permission findings in a separate section
+        if permission_findings:
+            print()
+            print("**Permission Limitations:**")
+            print("The following checks were incomplete due to missing permissions:")
+            for finding in permission_findings:
+                message = finding.get("message", "Unknown issue")
+                recommendation = finding.get("recommendation", "")
+                print(f"- {message}")
+                if recommendation and show_details:
+                    # Only show recommendation in details mode
+                    print(f"  → {recommendation}")
+
         print()
         if json_report_path:
             print(f"[DOC] JSON report saved to: {json_report_path}")
@@ -271,6 +305,12 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             "load_balancer_profile", {}
         ).get("effective_outbound_i_ps")
         effective_outbound = self.cluster_info.get("effective_outbound_type")
+
+        # Check if we have LoadBalancer permission issues
+        has_lb_permission_issue = any(
+            f.get("code") == "PERMISSION_INSUFFICIENT_LB"
+            for f in self.findings
+        )
 
         if outbound_ips or effective_outbound:
             print()
@@ -292,14 +332,18 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                         "- Effective IPs: Determined by User Defined Routes "
                         "(route table)"
                     )
-            elif configured_type == "loadBalancer" and outbound_ips:
-                # Regular load balancer
-                ip_list = ", ".join([
-                    ip.get("id", "").split("/")[-1]
-                    for ip in outbound_ips
-                    if ip.get("id")
-                ])
-                print(f"- Load Balancer IPs: {ip_list}")
+            elif configured_type == "loadBalancer":
+                if has_lb_permission_issue:
+                    # Permission issue prevents reading LoadBalancer details
+                    print("- Load Balancer IPs: Unable to retrieve (insufficient permissions)")
+                elif outbound_ips:
+                    # Regular load balancer with IPs
+                    ip_list = ", ".join([
+                        ip.get("id", "").split("/")[-1]
+                        for ip in outbound_ips
+                        if ip.get("id")
+                    ])
+                    print(f"- Load Balancer IPs: {ip_list}")
             elif configured_type == "userDefinedRouting":
                 # Regular UDR
                 print(
@@ -582,12 +626,19 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
 
                 print()
             else:
-                print("- **No route tables found on node subnets**")
+                if udr_analysis.get("incomplete_due_to_permissions"):
+                    print(
+                        "- **No route tables found** "
+                        "(analysis incomplete due to insufficient permissions)"
+                    )
+                else:
+                    print("- **No route tables found on node subnets**")
                 print()
 
     def _print_connectivity_tests(self):
         """Print connectivity test results section"""
         if self.api_probe_results:
+            print()
             print("### Connectivity Tests")
 
             if self.api_probe_results.get("skipped"):
@@ -654,6 +705,16 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         """Print NSG analysis section"""
         if self.nsg_analysis:
             print("### Network Security Group (NSG) Analysis")
+
+            # Check if analysis is incomplete due to permissions
+            if self.nsg_analysis.get("incomplete_due_to_permissions"):
+                print(
+                    "- **Analysis incomplete** due to insufficient permissions "
+                    "to read VMSS/VNet configuration"
+                )
+                print("- **NSGs Analyzed:** 0")
+                print()
+                return
 
             # NSG Analysis Summary
             subnet_nsgs = self.nsg_analysis.get("subnet_nsgs", [])
@@ -802,21 +863,31 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             print("## Findings")
             print()
 
-            # Count findings by severity
-            critical_count = len([
+            # Separate permission findings from regular findings
+            permission_findings = [
                 f for f in self.findings
+                if f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
+            ]
+            regular_findings = [
+                f for f in self.findings
+                if not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
+            ]
+
+            # Count regular findings by severity
+            critical_count = len([
+                f for f in regular_findings
                 if f.get("severity") == "critical"
             ])
             error_count = len([
-                f for f in self.findings
+                f for f in regular_findings
                 if f.get("severity") == "error"
             ])
             warning_count = len([
-                f for f in self.findings
+                f for f in regular_findings
                 if f.get("severity") == "warning"
             ])
             info_count = len([
-                f for f in self.findings
+                f for f in regular_findings
                 if f.get("severity") == "info"
             ])
 
@@ -841,13 +912,13 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 "info": 3
             }
 
-            # Sort findings by severity
+            # Sort regular findings by severity
             sorted_findings = sorted(
-                self.findings,
+                regular_findings,
                 key=lambda f: severity_order.get(f.get("severity", "info"), 3)
             )
 
-            # Display all findings in detail
+            # Display all regular findings in detail
             for finding in sorted_findings:
                 severity_icon = {
                     "critical": "[CRITICAL]",
@@ -867,6 +938,27 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                         f"{finding.get('recommendation', '')}"
                     )
                 print()
+
+            # Display permission findings in a separate section
+            if permission_findings:
+                print("## Permission Limitations")
+                print()
+                print(
+                    "**Note:** The following checks were incomplete due to "
+                    "missing permissions. Results may not reflect the "
+                    "complete network configuration."
+                )
+                print()
+
+                for finding in permission_findings:
+                    print(f"### [WARNING] {finding.get('code', 'UNKNOWN')}")
+                    print(f"**Message:** {finding.get('message', '')}")
+                    if finding.get("recommendation"):
+                        print(
+                            f"**Recommendation:** "
+                            f"{finding.get('recommendation', '')}"
+                        )
+                    print()
         else:
             print("[OK] No issues detected in the network configuration!")
             print()

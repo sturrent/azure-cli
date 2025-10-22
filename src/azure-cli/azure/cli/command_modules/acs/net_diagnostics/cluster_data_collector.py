@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional
 
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
+from .models import Finding, FindingCode, Severity
+
 
 def _to_dict(obj: Any) -> Any:
     """
@@ -64,6 +66,73 @@ class ClusterDataCollector:
         self.network_client = network_client
         self.compute_client = compute_client
         self.logger = logger or logging.getLogger(__name__)
+        self.findings: List[Finding] = []
+
+    def _check_authorization_error(
+        self,
+        error: HttpResponseError,
+        resource_type: str,
+        resource_name: str,
+        resource_group: Optional[str] = None
+    ) -> bool:
+        """
+        Check if the error is an authorization failure and create a finding.
+
+        Args:
+            error: The HttpResponseError to check
+            resource_type: Type of resource (e.g., 'VNet', 'VMSS', 'LoadBalancer')
+            resource_name: Name of the resource
+            resource_group: Optional resource group name
+
+        Returns:
+            True if this was an authorization error, False otherwise
+        """
+        error_message = str(error.message) if hasattr(error, 'message') else str(error)
+
+        if 'AuthorizationFailed' in error_message or 'authorization failed' in error_message.lower():
+            # Extract permission from error message if available
+            permission_match = re.search(
+                r"Microsoft\.\w+/[\w/]+/\w+",
+                error_message
+            )
+            missing_permission = permission_match.group(0) if permission_match else "Unknown permission"
+
+            # Determine finding code based on resource type
+            code_map = {
+                'VNet': FindingCode.PERMISSION_INSUFFICIENT_VNET,
+                'VMSS': FindingCode.PERMISSION_INSUFFICIENT_VMSS,
+                'LoadBalancer': FindingCode.PERMISSION_INSUFFICIENT_LB,
+            }
+            finding_code = code_map.get(resource_type, FindingCode.PERMISSION_INSUFFICIENT_VNET)
+
+            # Build recommendation message
+            rg_info = f" on resource group '{resource_group}'" if resource_group else ""
+            recommendation = (
+                f"Grant the 'Reader' role{rg_info} or assign a role with the "
+                f"'{missing_permission}' permission to access {resource_type} resources. "
+                f"Use: az role assignment create --role Reader --assignee <principal-id> "
+                f"--scope /subscriptions/<subscription-id>/resourceGroups/{resource_group or '<resource-group>'}"
+            )
+
+            # Create finding
+            finding = Finding(
+                severity=Severity.WARNING,
+                code=finding_code,
+                message=f"Incomplete {resource_type} Analysis - Missing permission to read {resource_name}",
+                recommendation=recommendation,
+                details={
+                    'resource_type': resource_type,
+                    'resource_name': resource_name,
+                    'resource_group': resource_group,
+                    'missing_permission': missing_permission,
+                    'error': error_message
+                }
+            )
+            self.findings.append(finding)
+            self.logger.warning("  %s", finding.message)
+            return True
+
+        return False
 
     def collect_cluster_info(self, cluster_name: str, resource_group: str) -> Dict[str, Any]:
         """
@@ -203,6 +272,10 @@ class ClusterDataCollector:
                         )
 
                 except (ResourceNotFoundError, HttpResponseError) as e:
+                    # Check if this is an authorization error
+                    if isinstance(e, HttpResponseError):
+                        if self._check_authorization_error(e, 'VNet', vnet_name, vnet_rg):
+                            continue  # Authorization error, finding already created
                     self.logger.warning("Failed to retrieve VNet %s: %s", vnet_name, e)
                     continue
 
@@ -229,6 +302,10 @@ class ClusterDataCollector:
             # List VMSS in the managed resource group
             vmss_list = list(self.compute_client.virtual_machine_scale_sets.list(mc_rg))
         except (ResourceNotFoundError, HttpResponseError) as e:
+            # Check if this is an authorization error
+            if isinstance(e, HttpResponseError):
+                if self._check_authorization_error(e, 'VMSS', mc_rg, mc_rg):
+                    return []  # Authorization error, finding already created
             self.logger.warning("Failed to list VMSS in %s: %s", mc_rg, e)
             return []
 
@@ -267,6 +344,10 @@ class ClusterDataCollector:
                 vmss_analysis.append(vmss_detail_dict)
 
             except (ResourceNotFoundError, HttpResponseError) as e:
+                # Check if this is an authorization error
+                if isinstance(e, HttpResponseError):
+                    if self._check_authorization_error(e, 'VMSS', vmss_name, mc_rg):
+                        continue  # Authorization error, finding already created
                 self.logger.warning("Failed to get details for VMSS %s: %s", vmss_name, e)
                 continue
 

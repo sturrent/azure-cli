@@ -26,6 +26,7 @@ from azure.cli.command_modules.acs.net_diagnostics.dns_analyzer import DNSAnalyz
 from azure.cli.command_modules.acs.net_diagnostics.misconfiguration_analyzer import (
     MisconfigurationAnalyzer
 )
+from azure.cli.command_modules.acs.net_diagnostics.models import FindingCode
 from azure.cli.command_modules.acs.net_diagnostics.nsg_analyzer import NSGAnalyzer
 from azure.cli.command_modules.acs.net_diagnostics.outbound_analyzer import (
     OutboundConnectivityAnalyzer
@@ -141,6 +142,15 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     logger.warning("  Collecting VMSS network configuration...")
     vmss_analysis = collector.collect_vmss_info(cluster_info)
 
+    # Check if we have permission issues that might affect subsequent analysis
+    has_vmss_permission_issues = any(
+        f.code in [
+            FindingCode.PERMISSION_INSUFFICIENT_VMSS,
+            FindingCode.PERMISSION_INSUFFICIENT_VNET
+        ]
+        for f in collector.findings
+    )
+
     # Phase 3: Analyze User Defined Routes (UDRs)
     logger.warning("[3/9] Analyzing Route Tables (UDRs)...")
     route_table_analyzer = RouteTableAnalyzer(
@@ -150,6 +160,14 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         logger=logger
     )
     route_table_analysis = route_table_analyzer.analyze()
+
+    # Add note if route table analysis is incomplete due to permissions
+    if has_vmss_permission_issues and not route_table_analysis.get("route_tables"):
+        route_table_analysis["incomplete_due_to_permissions"] = True
+        logger.warning(
+            "  Route table analysis may be incomplete due to "
+            "insufficient permissions to read VMSS/VNet configuration"
+        )
 
     # Phase 4: Analyze outbound connectivity
     logger.warning("[4/9] Analyzing outbound connectivity...")
@@ -175,6 +193,14 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         logger=logger
     )
     nsg_analysis = nsg_analyzer.analyze()
+
+    # Add note if NSG analysis is incomplete due to permissions
+    if has_vmss_permission_issues and nsg_analysis.get("nsgs_analyzed", 0) == 0:
+        nsg_analysis["incomplete_due_to_permissions"] = True
+        logger.warning(
+            "  NSG analysis may be incomplete due to "
+            "insufficient permissions to read VMSS/VNet configuration"
+        )
 
     # Phase 7: Analyze Private DNS configuration
     logger.warning("[7/9] Analyzing Private DNS configuration...")
@@ -213,6 +239,22 @@ def run_diagnostics(  # pylint: disable=too-many-locals
 
     # Phase 9: Analyze misconfigurations and generate findings
     logger.warning("Analyzing potential misconfigurations...")
+
+    # First, collect permission findings from data collection phase
+    permission_findings = []
+    if hasattr(collector, 'findings') and collector.findings:
+        logger.debug("Collecting %d findings from cluster data collector", len(collector.findings))
+        permission_findings.extend([f.to_dict() for f in collector.findings])
+
+    if hasattr(outbound_analyzer, 'findings') and outbound_analyzer.findings:
+        logger.debug("Collecting %d findings from outbound analyzer", len(outbound_analyzer.findings))
+        permission_findings.extend([f.to_dict() for f in outbound_analyzer.findings])
+
+    if hasattr(dns_analyzer, 'findings') and dns_analyzer.findings:
+        logger.debug("Collecting %d findings from DNS analyzer", len(dns_analyzer.findings))
+        permission_findings.extend([f.to_dict() for f in dns_analyzer.findings])
+
+    # Run misconfiguration analysis with permission findings context
     misconfiguration_analyzer = MisconfigurationAnalyzer(
         clients=clients,
         logger=logger
@@ -225,8 +267,12 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         api_server_access_analysis=api_server_access_analysis,
         nsg_analysis=nsg_analysis,
         api_probe_results=api_probe_results,
-        vmss_analysis=vmss_analysis
+        vmss_analysis=vmss_analysis,
+        permission_findings=permission_findings
     )
+
+    # Add permission findings to the final findings list
+    findings.extend(permission_findings)
 
     # Collect findings from individual analyzers
     # DNS analyzer creates findings via add_finding() but they're not

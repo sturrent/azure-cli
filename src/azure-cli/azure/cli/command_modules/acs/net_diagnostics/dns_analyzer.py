@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
 from .base_analyzer import BaseAnalyzer
-from .models import Finding, FindingCode
+from .models import Finding, FindingCode, Severity
 
 
 class DNSAnalyzer(BaseAnalyzer):
@@ -39,6 +39,63 @@ class DNSAnalyzer(BaseAnalyzer):
         super().__init__(clients, cluster_info, logger=logger)
         self.dns_analysis: Dict[str, Any] = {}
         self.vnet_dns_servers: List[str] = []
+
+    def _check_authorization_error(
+        self,
+        error: HttpResponseError,
+        resource_type: str,
+        resource_name: str,
+        resource_group: str
+    ) -> bool:
+        """
+        Check if the error is an authorization failure and create a finding.
+
+        Args:
+            error: The HttpResponseError to check
+            resource_type: Type of resource (e.g., 'VNet')
+            resource_name: Name of the resource
+            resource_group: Resource group name
+
+        Returns:
+            True if this was an authorization error, False otherwise
+        """
+        error_message = str(error.message) if hasattr(error, 'message') else str(error)
+
+        if 'AuthorizationFailed' in error_message or 'authorization failed' in error_message.lower():
+            # Extract permission from error message if available
+            permission_match = re.search(
+                r"Microsoft\.\w+/[\w/]+/\w+",
+                error_message
+            )
+            missing_permission = permission_match.group(0) if permission_match else "Unknown permission"
+
+            # Build recommendation message
+            recommendation = (
+                f"Grant the 'Reader' role on resource group '{resource_group}' or assign a role with the "
+                f"'{missing_permission}' permission to access {resource_type} resources. "
+                f"Use: az role assignment create --role Reader --assignee <principal-id> "
+                f"--scope /subscriptions/<subscription-id>/resourceGroups/{resource_group}"
+            )
+
+            # Create finding (use existing VNet permission code)
+            finding = Finding(
+                severity=Severity.WARNING,
+                code=FindingCode.PERMISSION_INSUFFICIENT_VNET,
+                message=f"Incomplete DNS/VNet Analysis - Missing permission to read {resource_name}",
+                recommendation=recommendation,
+                details={
+                    'resource_type': resource_type,
+                    'resource_name': resource_name,
+                    'resource_group': resource_group,
+                    'missing_permission': missing_permission,
+                    'error': error_message,
+                    'context': 'DNS analysis'
+                }
+            )
+            self.add_finding(finding)
+            return True
+
+        return False
 
     def analyze(self) -> Dict[str, Any]:
         """
@@ -230,6 +287,10 @@ class DNSAnalyzer(BaseAnalyzer):
                 self.logger.info("  VNet uses Azure DNS along with custom DNS servers")
 
         except (ResourceNotFoundError, HttpResponseError) as e:
+            # Check if this is an authorization error
+            if isinstance(e, HttpResponseError):
+                if self._check_authorization_error(e, 'VNet', vnet_name, vnet_rg):
+                    return  # Authorization error, finding already created
             self.logger.warning("  Unable to retrieve VNet information: %s", e)
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("  Failed to analyze VNet DNS configuration: %s", e)
