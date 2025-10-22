@@ -240,7 +240,7 @@ class OutboundConnectivityAnalyzer:
                         f.code == FindingCode.PERMISSION_INSUFFICIENT_LB
                         for f in self.findings
                     )
-                    
+
                     if not has_lb_permission_issue:
                         # Only report missing IPs if not due to permissions
                         effective_summary["warnings"].append(
@@ -340,7 +340,7 @@ class OutboundConnectivityAnalyzer:
             else:
                 self.logger.warning("    %s", message)
 
-    def _analyze_load_balancer_outbound(self, show_details: bool = False) -> None:
+    def _analyze_load_balancer_outbound(self, show_details: bool = False) -> None:  # pylint: disable=too-many-branches
         """
         Analyze load balancer outbound configuration
 
@@ -667,7 +667,7 @@ class OutboundConnectivityAnalyzer:
 
         # Convert camelCase keys to snake_case
         def camel_to_snake(name: str) -> str:
-            import re  # pylint: disable=import-outside-toplevel
+            import re  # pylint: disable=import-outside-toplevel,redefined-outer-name,reimported
 
             name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
             return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()

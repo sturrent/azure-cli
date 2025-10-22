@@ -240,13 +240,13 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         ]
         critical_findings = [
             f for f in self.findings
-            if f.get("severity") in ["critical", "error"]
-            and not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
+            if f.get("severity") in ["critical", "error"] and
+            not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
         ]
         warning_findings = [
             f for f in self.findings
-            if f.get("severity") == "warning"
-            and not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
+            if f.get("severity") == "warning" and
+            not f.get("code", "").startswith("PERMISSION_INSUFFICIENT")
         ]
 
         if len(critical_findings) == 0 and len(warning_findings) == 0:
