@@ -241,18 +241,28 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     logger.warning("Analyzing potential misconfigurations...")
 
     # First, collect permission findings from data collection phase
+    # Only collect PERMISSION_INSUFFICIENT_* findings, not all findings
     permission_findings = []
     if hasattr(collector, 'findings') and collector.findings:
-        logger.debug("Collecting %d findings from cluster data collector", len(collector.findings))
-        permission_findings.extend([f.to_dict() for f in collector.findings])
+        perm_findings = [f.to_dict() for f in collector.findings 
+                        if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+        if perm_findings:
+            logger.debug("Collecting %d permission findings from cluster data collector", len(perm_findings))
+            permission_findings.extend(perm_findings)
 
     if hasattr(outbound_analyzer, 'findings') and outbound_analyzer.findings:
-        logger.debug("Collecting %d findings from outbound analyzer", len(outbound_analyzer.findings))
-        permission_findings.extend([f.to_dict() for f in outbound_analyzer.findings])
+        perm_findings = [f.to_dict() for f in outbound_analyzer.findings 
+                        if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+        if perm_findings:
+            logger.debug("Collecting %d permission findings from outbound analyzer", len(perm_findings))
+            permission_findings.extend(perm_findings)
 
     if hasattr(dns_analyzer, 'findings') and dns_analyzer.findings:
-        logger.debug("Collecting %d findings from DNS analyzer", len(dns_analyzer.findings))
-        permission_findings.extend([f.to_dict() for f in dns_analyzer.findings])
+        perm_findings = [f.to_dict() for f in dns_analyzer.findings 
+                        if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+        if perm_findings:
+            logger.debug("Collecting %d permission findings from DNS analyzer", len(perm_findings))
+            permission_findings.extend(perm_findings)
 
     # Run misconfiguration analysis with permission findings context
     misconfiguration_analyzer = MisconfigurationAnalyzer(

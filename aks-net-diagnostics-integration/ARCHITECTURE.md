@@ -499,7 +499,7 @@ All analyzers inherit common patterns from `BaseAnalyzer`:
 
 **Features**:
 - Markdown formatting
-- Finding severity icons (⚠️ WARNING, 🔴 CRITICAL, ℹ️ INFO)
+- Finding severity levels (CRITICAL, ERROR, WARNING, INFO)
 - Network topology visualization
 - NSG rule formatting
 - Test result presentation
@@ -867,13 +867,6 @@ except HttpResponseError as e:
 | **Bugs Found & Fixed** | 25 bugs | 100% resolution rate |
 | **Performance** | ✅ EXCELLENT | 8-10 seconds (67% faster than target) |
 
-**Test Clusters:**
-1. aks-overlay (Azure CNI Overlay + UDR)
-2. aks-std-private (Private cluster + authorized IPs)
-3. aks-apiserver-vnet-demo (API server VNet integration)
-4. aks-managed-natgw-bicep (NAT Gateway)
-5. aks-fw (Hub-spoke + firewall)
-
 ---
 
 ### Phase Completion Status
@@ -936,44 +929,98 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 
 ### Sample Output
 
-**Summary Mode:**
+**Example 1: Cluster with no issues detected**
+
 ```
-===========================================
-AKS NETWORK DIAGNOSTICS SUMMARY
-===========================================
+==========================================================================
+# AKS Network Assessment Summary
 
-Cluster Name: myCluster
-Resource Group: myResourceGroup
-Location: eastus
+**Cluster:** myCluster (Succeeded)
+**Resource Group:** myResourceGroup
+**Generated:** 2025-10-23 23:13:56 UTC
 
-=== Network Configuration ===
+**Configuration:**
 - Network Plugin: azure
-- Network Policy: calico
-- Service CIDR: 10.0.0.0/16
-- DNS Service IP: 10.0.0.10
-- Pod CIDR: 10.244.0.0/16
 - Outbound Type: loadBalancer
-- Load Balancer IPs: 40.112.34.56
+- Private Cluster: false
 
-=== Diagnostic Findings ===
+**Outbound Configuration:**
+- Load Balancer IPs: 20.123.45.67
 
-[OK] No critical issues detected in analyzed components.
+### Connectivity Tests
+- **Status:** Skipped (Not requested)
 
-=== Analysis Complete ===
+
+**Findings Summary:**
+[OK] No issues detected
+
+Tip: Use --details flag for detailed analysis
+
+[OK] AKS network assessment completed successfully!
 ```
 
-**With Findings:**
+**Example 2: Cluster with warnings (NSG rules)**
+
 ```
-=== Diagnostic Findings ===
+==========================================================================
+# AKS Network Assessment Summary
 
-⚠️  WARNING: NSG_BLOCKING_AKS_TRAFFIC
-Message: NSG 'my-nsg' may be blocking required AKS management traffic
-Recommendation: Review NSG rules and ensure required outbound traffic is allowed
-Details: Rule 'DenyAllOutbound' with priority 1000 may block AKS control plane communication
+**Cluster:** myCluster (Succeeded)
+**Resource Group:** myResourceGroup
+**Generated:** 2025-10-23 23:33:37 UTC
 
-🔴 CRITICAL: CONNECTIVITY_HTTP_FAILURE
-Message: Failed to connect to MCR from cluster nodes
-Recommendation: Check firewall rules and ensure outbound connectivity to mcr.microsoft.com
+**Configuration:**
+- Network Plugin: azure
+- Outbound Type: loadBalancer
+- Private Cluster: false
+
+**Outbound Configuration:**
+- Load Balancer IPs: 20.123.45.67
+
+### Connectivity Tests
+- **Status:** Skipped (Not requested)
+
+
+**Findings Summary:**
+- [WARNING] API server access: API server access restricted - API server has authorized IP ranges enabled with 1 configured range(s). Only traffic from these IPs can access the API server.
+- [WARNING] NSG 'my-nsg' has rules that may block inter-node communication
+- [WARNING] NSG rule 'DenyAllOutbound' in 'my-nsg' may block AKS traffic but is overridden
+
+Tip: Use --details flag for detailed analysis
+
+[OK] AKS network assessment completed successfully!
+```
+
+**Example 3: Private cluster with DNS configuration errors**
+
+```
+==========================================================================
+# AKS Network Assessment Summary
+
+**Cluster:** myPrivateCluster (Failed)
+**Resource Group:** myResourceGroup
+**Generated:** 2025-10-23 23:34:14 UTC
+
+**Configuration:**
+- Network Plugin: azure
+- Outbound Type: loadBalancer
+- Private Cluster: true
+
+**Outbound Configuration:**
+- Load Balancer IPs: 20.234.56.78
+
+### Connectivity Tests
+- **Status:** Skipped (Not requested)
+
+
+**Findings Summary:**
+- [ERROR] Cluster failed with error: VMExtensionProvisioningError
+- [ERROR] Node pools in failed state: nodepool1
+- [ERROR] Private cluster is using custom DNS servers (10.1.0.10) that cannot resolve Azure private DNS zones
+
+Tip: Use --details flag for detailed analysis
+
+[OK] AKS network assessment completed successfully!
 ```
 
 ---

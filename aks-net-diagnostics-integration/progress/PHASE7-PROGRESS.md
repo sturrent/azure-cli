@@ -601,3 +601,192 @@ Phase 7 successfully implemented comprehensive permission error handling with ex
 
 **Phase 7 Complete** - Ready for Phase 8 implementation
 
+---
+
+## Bug Report: Duplicate Findings (Discovered Post-Phase 7)
+
+**Discovered:** October 23, 2025  
+**Severity:** MEDIUM  
+**Status:** ✅ FIXED
+
+### Issue Description
+
+The `MisconfigurationAnalyzer` creates duplicate findings that are already created by individual analyzers (`NSGAnalyzer`, `DNSAnalyzer`, etc.). This results in confusing, redundant messages in the findings summary.
+
+### Example Duplicates
+
+**NSG-Related Duplicates:**
+```
+- [WARNING] NSG rule 'sec_close' could block AKS traffic, but higher-priority allow rules override it: AllowContainerRegistry, AllowInternetHTTPS
+- [WARNING] NSG rule 'sec_close' in 'aks-overlay-rg-vnet-default-nsg-canadacentral' may block AKS traffic but is overridden
+
+- [WARNING] NSG 'aks-overlay-rg-vnet-default-nsg-canadacentral' on subnet has 1 rule(s) that may block inter-node communication
+- [WARNING] NSG 'aks-overlay-rg-vnet-default-nsg-canadacentral' has rules that may block inter-node communication
+```
+
+**DNS-Related Duplicates:**
+```
+- [ERROR] Private cluster is using custom DNS servers (10.1.0.10) that cannot resolve Azure private DNS zones
+- [ERROR] Private cluster is using custom DNS servers (10.1.0.10) that cannot resolve Azure private DNS zones
+```
+
+### Root Cause Analysis
+
+**NSG Duplicates:**
+1. **NSGAnalyzer** creates findings in:
+   - `_analyze_inter_node_communication()` → "NSG 'X' has rules that may block inter-node communication"
+   - `_analyze_nsg_compliance()` → "NSG rule 'Y' in 'X' may block AKS traffic but is overridden"
+
+2. **MisconfigurationAnalyzer** ALSO creates findings in `_analyze_nsg_issues()`:
+   - Line ~908: "NSG 'X' on subnet has N rule(s) that may block inter-node communication"
+   - Line ~867: "NSG rule 'Y' could block AKS traffic, but higher-priority allow rules override it: ..."
+
+**Result:** 2 findings for inter-node blocking + 2 findings for overridden rules = 4 duplicates
+
+### Impact
+
+- ❌ Confusing output with redundant messages
+- ❌ Harder to parse findings programmatically
+- ❌ Inconsistent message wording for same issue
+- ❌ Professional quality concerns for stakeholder presentation
+
+### Affected Code Locations
+
+**NSG Duplicates:**
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/nsg_analyzer.py`:
+  - Lines 271-324: `_analyze_inter_node_communication()`
+  - Lines 333-395: `_analyze_nsg_compliance()` creating findings
+  
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/misconfiguration_analyzer.py`:
+  - Lines 849-929: `_analyze_nsg_issues()` duplicating NSG findings
+  - Lines 867-875: Overridden rules duplicate
+  - Lines 908-920: Inter-node communication duplicate
+
+**DNS Duplicates (suspected):**
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/dns_analyzer.py`:
+  - Lines 236-260: Creates PRIVATE_DNS_MISCONFIGURED finding
+  
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/misconfiguration_analyzer.py`:
+  - Lines 281-543: `_analyze_private_dns_issues()` - needs investigation
+
+### Investigation Needed
+
+Check all analyzer pairs for duplicates:
+- [ ] DNS: `dns_analyzer.py` vs `misconfiguration_analyzer._analyze_private_dns_issues()`
+- [ ] UDR/Routes: `route_table_analyzer.py` vs `misconfiguration_analyzer._analyze_udr_issues()`
+- [ ] VNet: Any analyzer vs `misconfiguration_analyzer._analyze_vnet_issues()`
+- [ ] API Server: `api_server_analyzer.py` vs `misconfiguration_analyzer._analyze_api_server_access_issues()`
+- [ ] Connectivity: `connectivity_tester.py` vs `misconfiguration_analyzer._analyze_connectivity_test_results()`
+
+### Proposed Solution
+
+**Option 1: Remove Duplicate Logic from MisconfigurationAnalyzer** (PREFERRED)
+- Remove NSG finding creation from `misconfiguration_analyzer._analyze_nsg_issues()`
+- Keep ONLY correlation logic (e.g., "NSG blocking + connectivity test failed = root cause")
+- MisconfigurationAnalyzer should CORRELATE existing findings, not CREATE duplicates
+
+**Option 2: Remove Findings from Individual Analyzers**
+- Keep findings only in MisconfigurationAnalyzer
+- Individual analyzers only collect data
+- Not recommended - individual analyzers should be self-contained
+
+**Option 3: De-duplicate in ReportGenerator**
+- Add de-duplication logic based on finding code + key attributes
+- Not recommended - addresses symptom, not root cause
+
+### Fix Plan
+
+1. ✅ Create bug report in Phase 7 progress file
+2. ✅ Investigate all `misconfiguration_analyzer._analyze_*()` methods for duplicates
+3. ✅ Remove duplicate finding creation logic from MisconfigurationAnalyzer
+4. ✅ Keep only correlation/root-cause-analysis logic
+5. ✅ Test with aks-overlay and aks-api-connection clusters
+6. 🔧 Update Architecture doc sample output
+7. 🔧 Commit fix with detailed explanation
+
+### Implementation
+
+**Root Causes Identified:**
+
+1. **NSG Duplicates**: `misconfiguration_analyzer._analyze_nsg_issues()` was creating findings already created by `nsg_analyzer.py`
+2. **DNS Duplicates**: `orchestrator.py` was collecting DNS analyzer findings TWICE:
+   - Once into `permission_findings` (all findings)
+   - Again into `findings` (all findings)
+   - Both were added to final findings list
+
+**Files Modified:**
+
+1. **misconfiguration_analyzer.py** (`_analyze_nsg_issues`):
+   - Removed duplicate NSG blocking rules finding creation (lines ~860-895)
+   - Removed duplicate inter-node communication finding creation (lines ~897-920)
+   - Kept only NSG_NO_RESTRICTIONS informational finding
+   - Added comments explaining NSG findings are created by nsg_analyzer.py
+
+2. **orchestrator.py** (permission findings collection):
+   - Changed permission findings collection to ONLY collect `PERMISSION_INSUFFICIENT_*` findings
+   - Fixed lines 247-265 to filter findings by code prefix
+   - This prevents regular findings (DNS, NSG) from being collected twice
+
+**Code Changes:**
+
+```python
+# misconfiguration_analyzer.py - Before:
+blocking_rules = nsg_analysis.get("blocking_rules", [])
+for rule in blocking_rules:
+    # Creating duplicate findings... 50+ lines
+
+# misconfiguration_analyzer.py - After:
+# NOTE: NSG findings are created by nsg_analyzer.py. This method only adds
+# informational findings that are not already created by the NSG analyzer.
+# (removed 70+ lines of duplicate logic)
+```
+
+```python
+# orchestrator.py - Before:
+permission_findings.extend([f.to_dict() for f in dns_analyzer.findings])
+# Later: findings.extend([f.to_dict() for f in dns_analyzer.findings])
+# Result: DNS findings added TWICE
+
+# orchestrator.py - After:
+perm_findings = [f.to_dict() for f in dns_analyzer.findings 
+                if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+permission_findings.extend(perm_findings)
+# Later: findings.extend([f.to_dict() for f in dns_analyzer.findings])
+# Result: Permission findings added once, regular findings added once
+```
+
+### Testing
+
+**Test Cluster 1: aks-overlay** (NSG warnings)
+- **Before**: 5 findings (2 duplicate NSG rules + 2 duplicate inter-node + 1 API server)
+- **After**: 3 findings (1 NSG rule + 1 inter-node + 1 API server)
+- ✅ NSG duplicates eliminated
+
+**Test Cluster 2: aks-api-connection** (DNS errors)
+- **Before**: 4 findings (2 cluster errors + 2 duplicate DNS errors)
+- **After**: 3 findings (2 cluster errors + 1 DNS error)
+- ✅ DNS duplicates eliminated
+
+**Results:**
+- ✅ No duplicate NSG findings
+- ✅ No duplicate DNS findings
+- ✅ All findings unique and clear
+- ✅ Professional output quality achieved
+
+### Findings Investigation Summary
+
+Checked all analyzer pairs:
+- ✅ **NSG**: `nsg_analyzer.py` creates findings → misconfiguration analyzer was duplicating them (FIXED)
+- ✅ **DNS**: `dns_analyzer.py` creates findings → orchestrator was collecting twice (FIXED)
+- ✅ **UDR/Routes**: `route_table_analyzer.py` has NO `add_finding()` → only misconfiguration analyzer creates findings (OK)
+- ✅ **API Server**: `api_server_analyzer.py` has NO `add_finding()` → only misconfiguration analyzer creates findings (OK)
+- ✅ **Outbound**: `outbound_analyzer.py` has NO `add_finding()` (only permission findings) → no duplicates (OK)
+- ✅ **Connectivity**: `connectivity_tester.py` returns results dict → misconfiguration analyzer creates findings (OK)
+
+**Pattern**: Only NSG and DNS analyzers create their own findings. Others rely on misconfiguration analyzer.
+
+### Next Steps
+
+- 🔧 Update Architecture doc sample output with correct non-duplicate findings
+- 🔧 Commit fix with comprehensive explanation
+

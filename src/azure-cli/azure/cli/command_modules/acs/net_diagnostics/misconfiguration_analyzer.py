@@ -851,68 +851,21 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         nsg_analysis: Dict[str, Any],
         findings: List[Dict[str, Any]]
     ) -> None:
-        """Analyze NSG configuration issues"""
+        """Analyze NSG configuration issues
+        
+        NOTE: NSG findings are created by nsg_analyzer.py. This method only adds
+        informational findings that are not already created by the NSG analyzer.
+        """
         if not nsg_analysis:
             return
 
-        blocking_rules = nsg_analysis.get("blocking_rules", [])
-        for rule in blocking_rules:
-            effective_severity = rule.get("effective_severity", "critical")
-            is_overridden = rule.get("is_overridden", False)
-            overriding_rules = rule.get("overridden_by", [])
+        # NOTE: blocking_rules findings are already created by nsg_analyzer.py
+        # in _analyze_nsg_compliance(), so we don't duplicate them here.
+        
+        # NOTE: inter_node_communication findings are already created by nsg_analyzer.py
+        # in _analyze_inter_node_communication(), so we don't duplicate them here.
 
-            if is_overridden:
-                overriding_rule_names = [
-                    r.get("rule_name", "unknown")
-                    for r in overriding_rules[:2]
-                ]
-                message = (
-                    f"NSG rule '{rule.get('rule_name')}' could block AKS "
-                    f"traffic, but higher-priority allow rules override "
-                    f"it: {', '.join(overriding_rule_names)}"
-                )
-                recommendation = (
-                    f"Rule is currently ineffective due to higher-priority "
-                    f"rules. Consider removing or adjusting priority "
-                    f"{rule.get('priority')} for cleaner NSG configuration."
-                )
-            else:
-                message = (
-                    f"NSG rule '{rule.get('rule_name')}' in "
-                    f"'{rule.get('nsg_name')}' may block AKS traffic"
-                )
-                recommendation = (
-                    f"Review NSG rule priority {rule.get('priority')} - "
-                    f"{rule.get('impact', 'Could affect cluster functionality')}"
-                )
-
-            findings.append({
-                "severity": effective_severity,
-                "code": "NSG_BLOCKING_AKS_TRAFFIC",
-                "message": message,
-                "recommendation": recommendation,
-            })
-
-        inter_node = nsg_analysis.get("inter_node_communication", {})
-        if inter_node.get("status") == "potential_issues":
-            for issue in inter_node.get("issues", []):
-                nsg_name = issue.get("nsg_name", "unknown")
-                location = issue.get("location", "unknown")
-                rule_count = len(issue.get("blocking_rules", []))
-
-                findings.append({
-                    "severity": "warning",
-                    "code": "NSG_INTER_NODE_BLOCKING",
-                    "message": (
-                        f"NSG '{nsg_name}' on {location} has {rule_count} "
-                        f"rule(s) that may block inter-node communication"
-                    ),
-                    "recommendation": (
-                        "Ensure VirtualNetwork traffic is allowed between "
-                        "cluster nodes for proper functionality"
-                    ),
-                })
-
+        # Only add informational finding if no NSGs found (not created by nsg_analyzer)
         subnet_nsgs = nsg_analysis.get("subnet_nsgs", [])
         nic_nsgs = nsg_analysis.get("nic_nsgs", [])
 
