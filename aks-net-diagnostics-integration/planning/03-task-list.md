@@ -8,8 +8,8 @@
 - [x] **Phase 4:** Copy Diagnostic Modules ✅ COMPLETE (100%)
 - [x] **Phase 5:** Register Command & Define Parameters ✅ COMPLETE (100%)
 - [x] **Phase 6:** Integration Testing ✅ COMPLETE (100%)
-- [ ] **Phase 7:** UX Improvements & Permission Handling ⏳ (Current - Testing in Progress)
-- [ ] **Phase 8:** Additional Enhancements (Future)
+- [x] **Phase 7:** UX Improvements & Permission Handling ✅ COMPLETE (100%)
+- [ ] **Phase 8:** Node Pool Display & Pod CIDR Enhancement ⏳ (Next)
 
 ---
 
@@ -787,15 +787,156 @@ Copy and adapt the orchestrator to work with CLI authentication and command hand
 
 ---
 
-## Phase 8: Additional Enhancements
+## Phase 8: Node Pool Display & Pod CIDR Enhancement
 
-### 8.1 Node Pool Display
+### 8.1 Pod CIDR Detection Enhancement
 
-- [ ] Add node pool information to detailed report
-  - Display agent pool profiles in detailed output
-  - Show: pool name, mode (System/User), node count, VM size, OS type, provisioning state
-  - Include node subnet information if available
-  - Data already collected, just needs display formatting
+**Background:** Azure CNI has multiple networking variants with different pod CIDR behaviors:
+1. **Azure CNI Node Subnet (Legacy):** Pods and nodes share same VNet subnet. No pod CIDR (both use node subnet).
+2. **Azure CNI Overlay:** Nodes in VNet subnet, pods in overlay network. Cluster-level `podCidr` field populated.
+3. **Azure CNI Pod Subnet:** Dedicated per-pool pod subnets. Each pool has `podSubnetId`, no cluster-level `podCidr`.
+
+**Current Behavior:**
+- ✅ Kubenet: Shows `networkProfile.podCidr` correctly
+- ✅ Azure CNI Overlay: Shows `networkProfile.podCidr` correctly (e.g., `10.244.0.0/16`)
+- ❌ Azure CNI Pod Subnet: Shows empty (data is in `agentPoolProfiles[].podSubnetId`)
+- ⚠️ Azure CNI Node Subnet (Legacy): Shows empty (no pod CIDR exists - pods use node subnet)
+
+**Tasks:**
+
+- [ ] **Enhance cluster_data_collector.py:**
+  - [ ] Add method to detect if any agent pool has `podSubnetId` configured
+  - [ ] When `podSubnetId` exists, fetch subnet details from network client
+  - [ ] Extract `addressPrefix` (CIDR) from each pod subnet
+  - [ ] Store pod subnet information per agent pool in collected data
+  - [ ] Handle authorization errors gracefully (subnet may be in different RG)
+
+- [ ] **Enhance models.py:**
+  - [ ] Add pod subnet fields to data model (if needed)
+  - [ ] Store mapping of pool name → pod subnet CIDR
+
+- [ ] **Enhance report_generator.py:**
+  - [ ] Update pod CIDR display logic to handle all four scenarios:
+    1. Kubenet: Display `networkProfile.podCidr` (current behavior ✅)
+    2. Azure CNI Overlay: Display `networkProfile.podCidr` (current behavior ✅)
+    3. Azure CNI Pod Subnet: Display pod subnet CIDRs (aggregate or per-pool)
+    4. Azure CNI Node Subnet (Legacy): Display "N/A - Pods use node subnet"
+  - [ ] Consider showing per-pool pod subnets in node pool section (see 8.2)
+  - [ ] Add helpful context message for legacy mode
+
+**Testing Requirements:**
+- [ ] Test with Azure CNI Overlay (aks-overlay) - verify `10.244.0.0/16` still shows ✅
+- [ ] Test with Azure CNI Pod Subnet (aks-acni-podsubnet) - verify shows `10.241.0.0/16, 10.243.0.0/16` or per-pool
+- [ ] Test with Kubenet (aks-kubenet-byo-vnet-bicep) - verify existing behavior maintained ✅
+- [ ] Test with Azure CNI Node Subnet (create legacy cluster) - verify shows appropriate message
+
+**Expected Output Examples:**
+
+*Azure CNI Overlay:*
+```
+- **Pod CIDR:** 10.244.0.0/16
+```
+
+*Azure CNI Pod Subnet (aggregate):*
+```
+- **Pod Subnets:** 10.241.0.0/16, 10.243.0.0/16
+  (Per-pool pod subnets - see Node Pools section for details)
+```
+
+*Azure CNI Node Subnet (Legacy):*
+```
+- **Pod CIDR:** N/A - Pods use node subnet (legacy Azure CNI configuration)
+```
+
+### 8.2 Node Pool Display in Detailed Report
+
+**Purpose:** Show detailed agent pool configuration in `--details` output, including pod/node subnet information.
+
+**Tasks:**
+
+- [ ] **Add new section to detailed report (_print_detailed function):**
+  - [ ] Create `_print_node_pools()` method in report_generator.py
+  - [ ] Call after network configuration section
+  - [ ] Display header: `### Node Pools`
+
+- [ ] **For each agent pool, display:**
+  - [ ] Pool name (VMSS name if available, otherwise pool name)
+  - [ ] Mode: System or User
+  - [ ] Node count (current count)
+  - [ ] VM size (e.g., `Standard_D2s_v3`)
+  - [ ] OS type (Linux/Windows)
+  - [ ] Provisioning state (Succeeded, Failed, etc.)
+  - [ ] **Node subnet:** CIDR and subnet name (from `vnetSubnetId`)
+  - [ ] **Pod subnet:** CIDR and subnet name (from `podSubnetId` if exists)
+  - [ ] Availability zones (if configured)
+  - [ ] Max pods per node (if relevant)
+
+- [ ] **Handle subnet information:**
+  - [ ] Fetch subnet details for both `vnetSubnetId` and `podSubnetId`
+  - [ ] Extract subnet name from resource ID
+  - [ ] Display CIDR range (e.g., `10.240.0.0/16`)
+  - [ ] Handle missing subnet info gracefully (authorization errors)
+  - [ ] Cache subnet lookups to avoid duplicate API calls
+
+- [ ] **Formatting:**
+  - [ ] Use clear hierarchy (pool name as heading, properties indented)
+  - [ ] Align values for readability
+  - [ ] Highlight system pools vs user pools (different icon or marker)
+
+**Expected Output Format:**
+```
+### Node Pools
+
+🔧 **aks-nodepool1-05223296-vmss** (System Pool)
+  - Mode: System
+  - Node Count: 3
+  - VM Size: Standard_D2s_v3
+  - OS Type: Linux
+  - State: Succeeded
+  - Node Subnet: 10.240.0.0/16 (nodesubnet)
+  - Pod Subnet: 10.241.0.0/16 (podsubnet)
+  - Max Pods/Node: 30
+  - Availability Zones: 1, 2, 3
+
+👤 **aks-npool2-37114648-vmss** (User Pool)
+  - Mode: User
+  - Node Count: 2
+  - VM Size: Standard_D2s_v3
+  - OS Type: Linux
+  - State: Succeeded
+  - Node Subnet: 10.242.0.0/16 (node2subnet)
+  - Pod Subnet: 10.243.0.0/16 (pod2subnet)
+  - Max Pods/Node: 30
+```
+
+**Integration with 8.1:**
+- Pod subnet information collected in 8.1 will be used here
+- Cluster-level summary (8.1) + detailed per-pool view (8.2) provides complete picture
+
+**Data Sources:**
+- `cluster.agent_pool_profiles` - already collected ✅
+- `vnetSubnetId` - already in agent pool profile ✅
+- `podSubnetId` - already in agent pool profile ✅
+- Need to fetch subnet details (CIDR) from network client (new)
+
+### 8.3 Code Quality & Testing
+
+- [ ] **Style & Linting:**
+  - [ ] Run `azdev style acs` - ensure 10.00/10 rating maintained
+  - [ ] Run `azdev linter --ci-exclusions acs` - ensure PASSED
+  - [ ] Fix any new violations
+
+- [ ] **Testing:**
+  - [ ] Test all four Azure CNI variants (see 8.1 testing requirements)
+  - [ ] Test single pool vs multi-pool clusters
+  - [ ] Test with --details flag to verify node pool display
+  - [ ] Test authorization error handling (pod subnets in different RG)
+  - [ ] Regression test: Ensure existing clusters still work
+
+- [ ] **Documentation:**
+  - [ ] Update inline code comments
+  - [ ] Update docstrings
+  - [ ] Add comments explaining Azure CNI variant detection logic
 
 ### 8.2 Help Text ✅ (Completed in Phase 6)
 
