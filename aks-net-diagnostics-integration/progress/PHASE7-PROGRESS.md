@@ -797,3 +797,197 @@ Checked all analyzer pairs:
 
 This bug fix improves the professional quality of the POC output and eliminates confusion from duplicate findings.
 
+---
+
+## Bug Report: Severity Display Inconsistency (Discovered Post-Phase 7)
+
+**Discovered:** October 23, 2025  
+**Severity:** LOW  
+**Status:** ✅ FIXED
+
+### Issue Description
+
+The severity display was inconsistent between summary and detailed output:
+- **Summary mode**: Showed `[ERROR]` for all critical/error findings
+- **Detailed mode**: Showed `[CRITICAL]` correctly for critical findings
+
+**Example:**
+```
+# Summary output (BEFORE FIX):
+- [ERROR] Cluster failed with error: VMExtensionProvisioningError
+- [ERROR] Private cluster is using custom DNS servers...
+
+# Summary output (AFTER FIX):
+- [CRITICAL] Cluster failed with error: VMExtensionProvisioningError  
+- [CRITICAL] Private cluster is using custom DNS servers...
+
+# Detailed output (unchanged):
+### [CRITICAL] CLUSTER_OPERATION_FAILURE
+### [CRITICAL] PRIVATE_DNS_MISCONFIGURED
+```
+
+### Root Cause
+
+In `report_generator.py` line 273 always displayed as `[ERROR]` regardless of actual severity:
+```python
+print(f"- [ERROR] {message}")  # Should respect actual severity
+```
+
+### Fix Applied
+
+Added severity mapping logic in lines 262-276:
+```python
+severity = finding.get("severity", "error")
+severity_label = "[CRITICAL]" if severity == "critical" else "[ERROR]"
+print(f"- {severity_label} {message}")
+```
+
+### Test Results
+
+**Cluster:** aks-api-connection (private cluster with Failed state)
+
+**Output (AFTER FIX):**
+```
+Findings Summary:
+- [CRITICAL] Cluster failed with error: VMExtensionProvisioningError
+- [CRITICAL] Node pools in failed state: nodepool1
+- [CRITICAL] DNS server 10.1.0.10 is hosted in VNet aks-acni-podsubnet-vnet...
+- [CRITICAL] Private cluster is using custom DNS servers...
+```
+
+✅ All critical findings now show `[CRITICAL]` label in summary mode
+
+---
+
+## Bug Report: Missing VNet Link Detection (Discovered Post-Phase 7)
+
+**Discovered:** October 23, 2025  
+**Severity:** MEDIUM  
+**Status:** ✅ FIXED
+
+### Issue Description
+
+For private clusters with system-managed private DNS zones and custom DNS servers, the tool needed to detect if the VNet hosting the custom DNS server is linked to the private DNS zone. The method `_get_cluster_vnets_with_dns()` was a stub method that always returned an empty list.
+
+**Expected**: Finding about missing VNet link for DNS server host VNet  
+**Actual** (BEFORE FIX): Only generic custom DNS warning shown
+
+### Root Cause
+
+In `misconfiguration_analyzer.py` line 410, `_get_cluster_vnets_with_dns()` was a stub:
+```python
+def _get_cluster_vnets_with_dns(self) -> List[Dict[str, Any]]:
+    """Get cluster VNets with their DNS configurations"""
+    # TODO: Implement logic to get VNets with custom DNS from cluster info
+    return []  # Always returned empty!
+```
+
+Additionally, the method was trying to access `self.cluster_info` but `cluster_info` is passed as parameter to `analyze()`, not stored as instance variable.
+
+### Fix Applied
+
+**1. Implemented `_get_cluster_vnets_with_dns()` method** (lines 434-474):
+```python
+def _get_cluster_vnets_with_dns(self, cluster_info: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Get cluster VNets with their DNS configurations"""
+    vnets = []
+    try:
+        agent_pools = cluster_info.get("agent_pool_profiles", [])
+        
+        for pool in agent_pools:
+            vnet_subnet_id = pool.get("vnet_subnet_id")
+            if not vnet_subnet_id:
+                continue
+                
+            # Parse VNet info from subnet ID
+            parts = vnet_subnet_id.split("/")
+            if len(parts) < 9:
+                continue
+                
+            vnet_rg = parts[4]
+            vnet_name = parts[8]
+            
+            # Get VNet to check DNS servers
+            vnet = self.network_client.virtual_networks.get(vnet_rg, vnet_name)
+            dhcp_options = vnet.dhcp_options
+            dns_servers = dhcp_options.dns_servers if dhcp_options else []
+            
+            if dns_servers:
+                vnets.append({
+                    "name": vnet_name,
+                    "resource_group": vnet_rg,
+                    "id": vnet.id,
+                    "dns_servers": dns_servers
+                })
+    except Exception as e:
+        self.logger.debug("Could not get cluster VNets: %s", e)
+    
+    return vnets
+```
+
+**2. Fixed parameter passing** - Updated method signatures:
+- `_analyze_private_dns_issues()` → passes `cluster_info` to helpers
+- `_check_system_private_dns_issues(cluster_info, findings)` → added `cluster_info` param
+- `_check_dns_server_vnet_links(zone_rg, zone_name, cluster_info, findings)` → added `cluster_info` param
+- `_get_cluster_vnets_with_dns(cluster_info)` → added `cluster_info` param
+
+### Test Results
+
+**Cluster:** aks-api-connection (private cluster, system-managed DNS, custom DNS servers)
+
+**Configuration:**
+- Private cluster with system-managed private DNS zone
+- Custom DNS server: `10.1.0.10` 
+- DNS server hosted in VNet: `aks-acni-podsubnet-vnet`
+- Private DNS zone: `9c318e28-281e-441a-94c7-812cfb141845.privatelink.canadacentral.azmk8s.io`
+- Linked VNets: `aks-vnet` (cluster VNet)
+
+**Output (AFTER FIX):**
+```
+Findings Summary:
+- [CRITICAL] DNS server 10.1.0.10 is hosted in VNet aks-acni-podsubnet-vnet but this VNet 
+  is not linked to private DNS zone 9c318e28-281e-441a-94c7-812cfb141845.privatelink.canadacentral.azmk8s.io. 
+  Cluster VNet aks-vnet uses this DNS server.
+```
+
+✅ VNet link detection now working - identifies missing VNet link for DNS host VNet
+
+### Execution Flow
+
+Debug tracing showed:
+1. `_analyze_private_dns_issues()` called ✅
+2. `private_dns_zone` = "system" ✅
+3. `_check_system_private_dns_issues()` called ✅
+4. Found 1 AKS private DNS zone ✅
+5. `_check_dns_server_vnet_links()` called ✅
+6. Found 1 VNet link (aks-vnet) ✅
+7. `_get_cluster_vnets_with_dns()` returned 1 VNet (aks-vnet with DNS 10.1.0.10) ✅
+8. Found DNS server host VNet (aks-acni-podsubnet-vnet) ✅
+9. Detected host VNet NOT in linked VNets ✅
+10. Created CRITICAL finding ✅
+
+
+````
+
+---
+
+## Bug Report: Missing VNet Link Detection (Discovered Post-Phase 7)
+
+**Discovered:** October 23, 2025  
+**Severity:** MEDIUM  
+**Status:** 🔧 INVESTIGATING
+
+### Issue Description
+
+For private clusters with system-managed private DNS zones and custom DNS servers, the tool should detect if the VNet hosting the custom DNS server is linked to the private DNS zone. Currently this check may not be working.
+
+**Expected**: Finding about missing VNet link for DNS server host VNet
+**Actual**: Only shows generic custom DNS warning
+
+### Investigation Needed
+
+- Check if `_check_system_private_dns_issues()` is being called
+- Verify `_check_dns_server_vnet_links()` logic
+- Check if `_get_cluster_vnets_with_dns()` returns correct data
+- Verify private DNS client permissions
+

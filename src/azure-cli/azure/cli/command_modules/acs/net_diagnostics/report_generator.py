@@ -260,17 +260,21 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         else:
             # Show critical/error findings
             for finding in critical_findings:
+                # Map severity to correct label
+                severity = finding.get("severity", "error")
+                severity_label = "[CRITICAL]" if severity == "critical" else "[ERROR]"
+                
                 # For cluster operation failures, show only the error code
                 # in summary mode
                 if (finding.get("code") == "CLUSTER_OPERATION_FAILURE" and
                         finding.get("error_code")):
                     print(
-                        f"- [ERROR] Cluster failed with error: "
+                        f"- {severity_label} Cluster failed with error: "
                         f"{finding.get('error_code')}"
                     )
                 else:
                     message = finding.get("message", "Unknown issue")
-                    print(f"- [ERROR] {message}")
+                    print(f"- {severity_label} {message}")
 
             # Show warning findings
             for finding in warning_findings:

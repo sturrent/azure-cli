@@ -292,7 +292,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         private_dns_zone = api_server_profile.get("private_dns_zone", "")
 
         if private_dns_zone == "system":
-            self._check_system_private_dns_issues(findings)
+            self._check_system_private_dns_issues(cluster_info, findings)
         elif private_dns_zone and private_dns_zone != "system":
             self._check_private_dns_vnet_links(
                 cluster_info,
@@ -302,6 +302,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
 
     def _check_system_private_dns_issues(
         self,
+        cluster_info: Dict[str, Any],
         findings: List[Dict[str, Any]]
     ) -> None:
         """Check system-managed private DNS zone issues"""
@@ -330,7 +331,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                 zone_rg = zone.get("resource_group", "")
 
                 if zone_rg and zone_name:
-                    self._check_dns_server_vnet_links(zone_rg, zone_name, findings)
+                    self._check_dns_server_vnet_links(zone_rg, zone_name, cluster_info, findings)
 
         except Exception as e:  # pylint: disable=broad-except
             self.logger.info("Could not analyze system private DNS issues: %s", e)
@@ -339,6 +340,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         self,
         zone_rg: str,
         zone_name: str,
+        cluster_info: Dict[str, Any],
         findings: List[Dict[str, Any]]
     ) -> None:
         """Check if VNets with custom DNS servers are properly linked
@@ -358,7 +360,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                 if link.virtual_network:
                     linked_vnet_ids.append(link.virtual_network.id)
 
-            cluster_vnets = self._get_cluster_vnets_with_dns()
+            cluster_vnets = self._get_cluster_vnets_with_dns(cluster_info)
 
             for vnet_info in cluster_vnets:
                 vnet_name = vnet_info.get("name", "")
@@ -369,7 +371,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                         dns_host_vnet = self._find_dns_server_host_vnet(
                             dns_server
                         )
-
+                        
                         if (dns_host_vnet and
                                 dns_host_vnet.get("id") not in linked_vnet_ids):
                             dns_host_vnet_name = dns_host_vnet.get(
@@ -399,13 +401,47 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         except Exception as e:  # pylint: disable=broad-except
             self.logger.info("Could not check DNS server VNet links: %s", e)
 
-    def _get_cluster_vnets_with_dns(self) -> List[Dict[str, Any]]:
+    def _get_cluster_vnets_with_dns(self, cluster_info: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get cluster VNets with their DNS configurations"""
         vnets = []
 
-        # Note: This method needs cluster_info to get agent pools
-        # For now, we'll return empty list and let the caller pass this data
-        # This is a design consideration - might need to refactor
+        try:
+            # Get VNets from agent pools
+            agent_pools = cluster_info.get("agent_pool_profiles", [])
+            
+            for pool in agent_pools:
+                vnet_subnet_id = pool.get("vnet_subnet_id")
+                
+                if not vnet_subnet_id:
+                    continue
+                    
+                # Parse VNet info from subnet ID
+                # Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}
+                parts = vnet_subnet_id.split("/")
+                if len(parts) < 9:
+                    continue
+                    
+                vnet_rg = parts[4]
+                vnet_name = parts[8]
+                
+                # Get VNet to check DNS servers
+                try:
+                    vnet = self.network_client.virtual_networks.get(vnet_rg, vnet_name)
+                    dhcp_options = vnet.dhcp_options
+                    dns_servers = dhcp_options.dns_servers if dhcp_options else []
+                    
+                    if dns_servers:
+                        vnets.append({
+                            "name": vnet_name,
+                            "resource_group": vnet_rg,
+                            "id": vnet.id,
+                            "dns_servers": dns_servers
+                        })
+                except Exception as e:  # pylint: disable=broad-except
+                    self.logger.debug("Could not get VNet %s: %s", vnet_name, e)
+                    
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.debug("Could not get cluster VNets: %s", e)
 
         return vnets
 
