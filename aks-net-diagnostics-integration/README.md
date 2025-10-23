@@ -113,8 +113,8 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - ✅ **Critical Bug #20 Fixed:** AKS-managed VNet UDR detection
   - ✅ **Bugs #21-24 Fixed:** UX improvements from exploration testing
   - 📊 All formal tests passing: 33+/33+ (100%)
-  - � Exploration testing: 6+ additional scenarios validated
-  - �🐛 All bugs fixed: 24/24 (100%)
+  - 🧪 Exploration testing: 6+ additional scenarios validated
+  - 🐛 All bugs fixed: 24/24 (100%)
   - 📄 Phase 6 completion report updated
   - 🎯 5 test clusters validated across all outbound types
   - Latest commits: 320b960dcc, 02e4865429
@@ -130,7 +130,7 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - ✅ Clean, consistent output formatting (removed emoji, [NOTE] prefix)
   - 📊 7 files modified for permission handling
   - 🎯 100% false positive elimination
-  - 📄 Phase 7 completion report created
+  - 📄 Phase 7 progress report created
   
 - **Next:** Phase 8 - Node Pool Display & Additional Enhancements
 
@@ -238,28 +238,13 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 
 ## 🛠️ Development Setup
 
-### Prerequisites
-```bash
-# Install azdev
-pip install azdev
+For complete development environment setup instructions, see **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)**.
 
-# Setup development environment
-cd /home/sturrent/gitrepos/azure-cli
-azdev setup -c
-
-# Verify setup
-az --version
-```
-
-### Working Branch
-```bash
-# Current branch
-git branch
-# Should show: * aks-net-diagnostics-integration
-
-# View planning documents
-ls -la aks-net-diagnostics-integration/
-```
+Quick reference:
+- Python 3.10.12
+- Azure CLI 2.78.0 (dev mode)
+- azdev 0.2.7
+- Working branch: `aks-net-diagnostics-integration`
 
 ## 📁 Project Structure
 
@@ -377,16 +362,10 @@ See [05-questions-and-decisions.md](./05-questions-and-decisions.md) for:
 This is an integration project. If you want to help:
 
 1. Review the planning documents
-2. Ask questions in [05-questions-and-decisions.md](./05-questions-and-decisions.md)
-3. Pick tasks from [03-task-list.md](./03-task-list.md)
-4. Follow the integration strategy in [02-integration-strategy.md](./02-integration-strategy.md)
-5. Write tests per [04-testing-plan.md](./04-testing-plan.md)
-
-## 📞 Contact
-
-- **Project Lead:** [Your name/contact]
-- **Azure CLI Team:** [Contact info]
-- **ACS Module Owners:** [Contact info]
+2. Ask questions in [05-questions-and-decisions.md](./planning/05-questions-and-decisions.md)
+3. Pick tasks from [03-task-list.md](./planning/03-task-list.md)
+4. Follow the integration strategy in [02-integration-strategy.md](./planning/02-integration-strategy.md)
+5. Write tests per [04-testing-plan.md](./planning/04-testing-plan.md)
 
 ## 📝 Notes
 
@@ -397,8 +376,8 @@ This is an integration project. If you want to help:
 
 ---
 
-**Last Updated:** October 21, 2025  
-**Current Phase:** Phase 7 - Documentation & Polish (IN PROGRESS - UX Enhancements)  
-**Status:** Phase 6 complete - 33+ tests passed, 20 bugs fixed, ready for merge  
-**Next Action:** Final documentation and polish  
+**Last Updated:** October 22, 2025  
+**Current Phase:** Phase 8 - Additional Enhancements (Next)  
+**Status:** Phase 7 complete - Permission handling implemented, all tests passing  
+**Next Action:** Node pool display enhancement  
 **Environment:** Python 3.10.12, Azure CLI 2.78.0 (dev mode), azdev 0.2.7
