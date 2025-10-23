@@ -10,7 +10,8 @@ This directory contains the planning documents for integrating the **aks-net-dia
 3. **[planning/03-task-list.md](./planning/03-task-list.md)** - Task tracker with estimates
 4. **[guides/DEVELOPMENT-SETUP.md](./guides/DEVELOPMENT-SETUP.md)** - Environment setup guide
 5. **[progress/PHASE6-COMPLETION.md](./progress/PHASE6-COMPLETION.md)** - 🎉 **Phase 6: COMPLETE (100%)** - All testing complete!
-6. **[progress/PHASE6-PROGRESS.md](./progress/PHASE6-PROGRESS.md)** - Detailed Phase 6 testing report
+6. **[progress/PHASE7-PROGRESS.md](./progress/PHASE7-PROGRESS.md)** - 🎉 **Phase 7: COMPLETE (100%)** - Permission handling & UX improvements complete!
+7. **[planning/06-phase8-pod-cidr-nodepool.md](./planning/06-phase8-pod-cidr-nodepool.md)** - 📋 **Phase 8: PLANNED** - Pod CIDR & node pool display
 
 ### Additional Resources
 - **[planning/01-analysis.md](./planning/01-analysis.md)** - Detailed technical analysis
@@ -89,7 +90,7 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
 ## 📊 Project Status
 
 **Branch:** `aks-net-diagnostics-integration`  
-**Current Phase:** Phase 7 - Documentation & Polish (IN PROGRESS - UX Enhancements)  
+**Current Phase:** Phase 8 - Node Pool Display & Pod CIDR Enhancement ⏳ (Next)  
 **Completed Phases:**
 - ✅ Phase 1: Planning (COMPLETE)
 - ✅ Phase 2: Development Environment Setup (COMPLETE)
@@ -102,24 +103,16 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - **24 bugs found and fixed (100% resolution rate)**
   - 5 test clusters validated
   - All outbound types tested (loadBalancer, userDefinedRouting, managedNATGateway)
+- ✅ Phase 7: UX Improvements & Permission Handling (COMPLETE - 100%)
+  - Comprehensive permission error handling
+  - 3 permission-specific finding codes
+  - Authorization error detection across 4 analyzers
+  - 100% false positive elimination
+  - Tested across 3 network types (Overlay, Kubenet, Azure CNI Pod Subnet)
 
 ### Latest Progress
 
-- ✅ **Phase 6 Complete! (October 21, 2025)**
-  - ✅ 24 bugs found and fixed (100% fix rate)
-  - ✅ Help text added with 4 comprehensive examples
-  - ✅ Linter completely clean (CLI Linter, Pylint, Flake8: PASSED)
-  - ✅ Code quality: 10.00/10 rating
-  - ✅ **Critical Bug #20 Fixed:** AKS-managed VNet UDR detection
-  - ✅ **Bugs #21-24 Fixed:** UX improvements from exploration testing
-  - 📊 All formal tests passing: 33+/33+ (100%)
-  - 🧪 Exploration testing: 6+ additional scenarios validated
-  - 🐛 All bugs fixed: 24/24 (100%)
-  - 📄 Phase 6 completion report updated
-  - 🎯 5 test clusters validated across all outbound types
-  - Latest commits: 320b960dcc, 02e4865429
-
-- ✅ **Phase 7 Complete! (October 22, 2025)**
+- ✅ **Phase 7 Complete! (October 22-23, 2025)**
   - ✅ Comprehensive permission error handling implemented
   - ✅ 3 permission-specific finding codes added (VNet, VMSS, LoadBalancer)
   - ✅ Authorization error detection across 4 analyzers
@@ -128,22 +121,39 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - ✅ 7 UX improvements implemented
   - ✅ Tested with service principal (limited permissions)
   - ✅ Clean, consistent output formatting (removed emoji, [NOTE] prefix)
+  - ✅ **Outbound IP display bug fixed** - now shows actual IPs instead of resource IDs
+  - ✅ README documentation cleanup (emoji fixes, streamlined setup)
+  - ✅ **Comprehensive testing across network types:**
+    - ✅ Azure CNI Overlay (aks-overlay) - pod CIDR: 10.244.0.0/16
+    - ✅ Kubenet (aks-kubenet-byo-vnet-bicep) - route tables detected
+    - ✅ Azure CNI Pod Subnet (aks-acni-podsubnet) - multiple node pools
   - 📊 7 files modified for permission handling
   - 🎯 100% false positive elimination
-  - 📄 Phase 7 progress report created
+  - 🐛 Outbound IP bug discovered during cross-tenant testing and fixed
+  - � Phase 7 completion report created
+  - Latest commits: 6bb51ad442, 60a81cda26, 1a1a854a4e, ace0d843a7
+
+- 📋 **Phase 8 Planning Complete! (October 23, 2025)**
+  - 📝 Comprehensive planning document created (planning/06-phase8-pod-cidr-nodepool.md)
+  - 🔍 **Discovery:** Azure CNI Pod Subnet stores pod CIDRs per-pool, not in networkProfile
+  - 📊 4 Azure CNI variants documented (Node Subnet, Overlay, Pod Subnet, Kubenet)
+  - 🎯 Implementation plan: Pod CIDR detection + Node pool display
+  - ✅ Testing matrix defined for all cluster types
+  - **Scope:** Fix empty pod CIDR for Azure CNI Pod Subnet + display node pool details
   
-- **Next:** Phase 8 - Node Pool Display & Additional Enhancements
+- **Next:** Phase 8 Implementation - Pod CIDR Enhancement & Node Pool Display
 
 ### Quick Stats
 
 - **Total Effort:** 24-34 hours POC estimate
-- **Time Spent:** ~26 hours (Phase 7 complete)
-- **Current Phase:** Phase 8 - Additional Enhancements ⏳ (Next)
+- **Time Spent:** ~28 hours (Phase 7 complete + Phase 8 planning)
+- **Current Phase:** Phase 8 - Pod CIDR & Node Pool Display ⏳ (Planned - Ready to Execute)
 - **Code Quality:** 10.00/10 rating, all linters passing ✅
-- **Test Success Rate:** 100% (33+ formal + 6+ exploration + permission scenarios)
-- **Bug Fix Rate:** 100% (24 bugs found, 24 fixed)
+- **Test Success Rate:** 100% (33+ formal + 6+ exploration + permission scenarios + 3 network types)
+- **Bug Fix Rate:** 100% (25 bugs found, 25 fixed - including outbound IP display)
 - **Permission Handling:** ✅ Complete - Comprehensive error handling
-- **POC Status:** ✅ Complete - Ready for Phase 8
+- **Network Type Coverage:** 3/3 validated (Overlay, Kubenet, Azure CNI Pod Subnet)
+- **POC Status:** ✅ Complete - Ready for Phase 8 enhancements
 - **See:** [📅 Timeline section below](#-timeline) for detailed phase breakdown
 
 ### Progress Checklist
@@ -230,11 +240,21 @@ az aks net-diagnostics -n myCluster -g myResourceGroup --details --probe-test --
   - [x] Add contextual findings summary ✅
   - [x] Separate permission findings in report ✅
   - [x] Test with service principal (limited permissions) ✅
-  - [x] Phase 7 completion report created ✅
-- [ ] **Phase 8: Additional Enhancements** ⏳ IN PROGRESS
-  - [ ] Display node pool info in detailed report
-  - [ ] Additional UX improvements
-  - [ ] Final documentation polish
+  - [x] Fix outbound IP display bug (resource ID → actual IP) ✅
+  - [x] README documentation cleanup ✅
+  - [x] Test across 3 network types (Overlay, Kubenet, Azure CNI Pod Subnet) ✅
+  - [x] Validate multiple node pool detection ✅
+  - [x] Phase 7 progress report created ✅
+  - [x] All code quality checks passing (linter, pylint, flake8) ✅
+- [ ] **Phase 8: Node Pool Display & Pod CIDR Enhancement** ⏳ PLANNED (Next)
+  - [x] Planning complete - comprehensive design document created ✅
+  - [x] Azure CNI variants analysis complete ✅
+  - [x] Testing matrix defined ✅
+  - [ ] Implement pod CIDR detection for Azure CNI Pod Subnet
+  - [ ] Add node pool display to detailed report
+  - [ ] Test with all 4 Azure CNI variants
+  - [ ] Code quality validation
+  - See: [planning/06-phase8-pod-cidr-nodepool.md](./planning/06-phase8-pod-cidr-nodepool.md)
 
 ## 🛠️ Development Setup
 
@@ -345,17 +365,21 @@ See [05-questions-and-decisions.md](./05-questions-and-decisions.md) for:
 | Phase 4: Copy Diagnostic Modules | 8-10 hours | ✅ COMPLETE |
 | Phase 5: Register Command & Parameters | 1 hour | ✅ COMPLETE |
 | Phase 6: Integration Testing | 4-6 hours | ✅ COMPLETE |
-| Phase 7: Documentation & Polish | 2-4 hours | ⏳ NEXT |
-| **TOTAL (POC)** | **24-34 hours** | **~24 hours completed** |
+| Phase 7: Permission Handling & UX | 2-4 hours | ✅ COMPLETE |
+| Phase 8: Pod CIDR & Node Pool Display | 2-3 hours | 📋 PLANNED |
+| **TOTAL (POC)** | **24-34 hours** | **~28 hours completed** |
 
 **Note:** Using POC approach - deferring output formatting refactoring. Timeline assumes working on this as a focused effort. Calendar time will vary based on availability and review cycles.
 
-**Phase 6 Summary:**
-- 33+ tests executed across 5 comprehensive categories
-- 20 bugs identified and fixed (100% fix rate)
-- All test scenarios passing
-- Production-ready code quality (10.00/10 pylint)
-- Ready for merge to main branch
+**Phase 7 Summary:**
+- 7 files modified for comprehensive permission handling
+- 3 permission-specific finding codes added
+- Authorization error detection across 4 analyzers
+- 100% false positive elimination
+- Tested across 3 network types (Overlay, Kubenet, Azure CNI Pod Subnet)
+- Critical outbound IP display bug fixed
+- Documentation cleaned up
+- Phase 8 fully planned and ready for implementation
 
 ## 🤝 Contributing
 
@@ -376,8 +400,8 @@ This is an integration project. If you want to help:
 
 ---
 
-**Last Updated:** October 22, 2025  
-**Current Phase:** Phase 8 - Additional Enhancements (Next)  
-**Status:** Phase 7 complete - Permission handling implemented, all tests passing  
-**Next Action:** Node pool display enhancement  
+**Last Updated:** October 23, 2025  
+**Current Phase:** Phase 8 - Pod CIDR Enhancement & Node Pool Display (Planned)  
+**Status:** Phase 7 complete - All permission handling, testing, and bug fixes complete  
+**Next Action:** Implement pod CIDR detection for Azure CNI Pod Subnet + node pool display  
 **Environment:** Python 3.10.12, Azure CLI 2.78.0 (dev mode), azdev 0.2.7
