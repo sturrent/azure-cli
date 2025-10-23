@@ -1023,6 +1023,48 @@ Tip: Use --details flag for detailed analysis
 [OK] AKS network assessment completed successfully!
 ```
 
+**Example 4: Detailed output with --details flag**
+
+```
+==========================================================================
+# AKS Network Assessment Summary
+
+**Cluster:** myPrivateCluster (Failed)
+**Resource Group:** myResourceGroup
+**Generated:** 2025-10-23 23:34:14 UTC
+
+**Configuration:**
+- Network Plugin: azure
+- Outbound Type: loadBalancer
+- Private Cluster: true
+
+**Outbound Configuration:**
+- Load Balancer IPs: 20.234.56.78
+
+### Connectivity Tests
+- **Status:** Skipped (Not requested)
+
+
+## Findings
+
+**Findings Summary:**
+- [CRITICAL] 3
+
+### [CRITICAL] CLUSTER_OPERATION_FAILURE
+**Message:** Cluster failed with error: VMExtensionProvisioningError: CSE failed with 'VMExtensionError_K8SAPIServerDNSLookupFail', which means agents are unable to resolve Kubernetes API server name. It's likely custom DNS server is not correctly configured, please see https://aka.ms/aks/vmextensionerror_k8sapiserverdnslookupfail and https://aka.ms/aks/private-cluster#hub-and-spoke-with-custom-dns for more information.
+**Recommendation:** Check Azure Activity Log for detailed failure information and contact Azure support if needed
+
+### [CRITICAL] NODE_POOL_FAILURE
+**Message:** Node pools in failed state: nodepool1
+**Recommendation:** Check node pool configuration and Azure Activity Log for detailed failure information
+
+### [CRITICAL] PRIVATE_DNS_MISCONFIGURED
+**Message:** Private cluster is using custom DNS servers (10.1.0.10) that cannot resolve Azure private DNS zones
+**Recommendation:** For private clusters, ensure custom DNS servers forward Azure private DNS zone queries to Azure DNS (168.63.129.16). Current DNS servers: 10.1.0.10. Either: (1) Configure DNS forwarding to 168.63.129.16 for '*.privatelink.*.azmk8s.io', (2) Use Azure DNS as primary DNS server, or (3) Configure conditional forwarding in your custom DNS solution.
+
+[OK] AKS network assessment completed successfully!
+```
+
 ---
 
 ## Future Enhancements
