@@ -1014,9 +1014,9 @@ Tip: Use --details flag for detailed analysis
 
 
 **Findings Summary:**
-- [ERROR] Cluster failed with error: VMExtensionProvisioningError
-- [ERROR] Node pools in failed state: nodepool1
-- [ERROR] Private cluster is using custom DNS servers (10.1.0.10) that cannot resolve Azure private DNS zones
+- [CRITICAL] Cluster failed with error: VMExtensionProvisioningError
+- [CRITICAL] Node pools in failed state: nodepool1
+- [WARNING] Private cluster is using custom DNS servers (10.1.0.10) which may not resolve Azure private DNS zones
 
 Tip: Use --details flag for detailed analysis
 
@@ -1027,28 +1027,67 @@ Tip: Use --details flag for detailed analysis
 
 ```
 ==========================================================================
-# AKS Network Assessment Summary
+# AKS Network Assessment Report
 
-**Cluster:** myPrivateCluster (Failed)
+**Cluster:** myPrivateCluster
 **Resource Group:** myResourceGroup
-**Generated:** 2025-10-23 23:34:14 UTC
+**Subscription:** xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+**Generated:** 2025-10-24 00:28:25 UTC
 
-**Configuration:**
-- Network Plugin: azure
-- Outbound Type: loadBalancer
-- Private Cluster: true
+## Cluster Overview
 
-**Outbound Configuration:**
-- Load Balancer IPs: 20.234.56.78
+| Property | Value |
+|----------|-------|
+| Provisioning State | Failed |
+| Power State | Running |
+| Location | canadacentral |
+| Network Plugin | azure |
+| Outbound Type | loadBalancer |
+| Private Cluster | true |
+
+## Network Configuration
+
+### Service Network
+- **Service CIDR:** 10.0.0.0/16
+- **DNS Service IP:** 10.0.0.10
+- **Pod CIDR:** 
+
+### API Server Access
+- **Type:** Private cluster
+- **Private FQDN:** myPrivateCluster-xxxxxxxx.yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy.privatelink.canadacentral.azmk8s.io
+- **Private DNS Zone:** system
+- **Access Restrictions:** None (unrestricted public access)
+
+### Outbound Connectivity
+- **Type:** loadBalancer
+- **Effective Public IPs:**
+  - 20.234.56.78
+
+### User Defined Routes Analysis
+- **No route tables found on node subnets**
+
 
 ### Connectivity Tests
 - **Status:** Skipped (Not requested)
 
+### Network Security Group (NSG) Analysis
+- **NSGs Analyzed:** 2
+- **Issues Found:** 0
+- **Inter-node Communication:** [OK] Not blocked
+
+**Subnet NSGs:**
+- **aks-subnet** -> NSG: myCluster-subnet-nsg
+  - Custom Rules: 0, Default Rules: 6
+
+**NIC NSGs:**
+- **aks-agentpool-nsg** (used by: aks-nodepool1-vmss)
+  - Custom Rules: 0, Default Rules: 6
 
 ## Findings
 
 **Findings Summary:**
 - [CRITICAL] 3
+- [WARNING] 1
 
 ### [CRITICAL] CLUSTER_OPERATION_FAILURE
 **Message:** Cluster failed with error: VMExtensionProvisioningError: CSE failed with 'VMExtensionError_K8SAPIServerDNSLookupFail', which means agents are unable to resolve Kubernetes API server name. It's likely custom DNS server is not correctly configured, please see https://aka.ms/aks/vmextensionerror_k8sapiserverdnslookupfail and https://aka.ms/aks/private-cluster#hub-and-spoke-with-custom-dns for more information.
@@ -1058,9 +1097,13 @@ Tip: Use --details flag for detailed analysis
 **Message:** Node pools in failed state: nodepool1
 **Recommendation:** Check node pool configuration and Azure Activity Log for detailed failure information
 
-### [CRITICAL] PRIVATE_DNS_MISCONFIGURED
-**Message:** Private cluster is using custom DNS servers (10.1.0.10) that cannot resolve Azure private DNS zones
-**Recommendation:** For private clusters, ensure custom DNS servers forward Azure private DNS zone queries to Azure DNS (168.63.129.16). Current DNS servers: 10.1.0.10. Either: (1) Configure DNS forwarding to 168.63.129.16 for '*.privatelink.*.azmk8s.io', (2) Use Azure DNS as primary DNS server, or (3) Configure conditional forwarding in your custom DNS solution.
+### [CRITICAL] PDNS_DNS_HOST_VNET_LINK_MISSING
+**Message:** DNS server 10.1.0.10 is hosted in VNet customDnsVnet but this VNet is not linked to private DNS zone yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy.privatelink.canadacentral.azmk8s.io. Cluster VNet myClusterVnet uses this DNS server.
+**Recommendation:** Link VNet customDnsVnet to private DNS zone yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy.privatelink.canadacentral.azmk8s.io to ensure proper DNS resolution for the private cluster
+
+### [WARNING] PRIVATE_DNS_MISCONFIGURED
+**Message:** Private cluster is using custom DNS servers (10.1.0.10) which may not resolve Azure private DNS zones
+**Recommendation:** For private clusters, custom DNS servers must be configured to resolve Azure private DNS zones. Current DNS servers: 10.1.0.10. Ensure one of the following: (1) DNS server VNet is linked to the private DNS zone, OR (2) Configure DNS forwarding to Azure DNS (168.63.129.16) for '*.privatelink.*.azmk8s.io', OR (3) Use Azure DNS (168.63.129.16) as primary DNS server.
 
 [OK] AKS network assessment completed successfully!
 ```
