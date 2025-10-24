@@ -2,6 +2,19 @@
 
 ---
 
+## Table of Contents
+
+1. [POC Journey](#poc-journey)
+2. [Architecture Overview](#architecture-overview)
+3. [Integration Design](#integration-design)
+4. [Module Breakdown](#module-breakdown)
+5. [Data Flow](#data-flow)
+6. [Authentication Architecture](#authentication-architecture)
+7. [Design Decisions](#design-decisions)
+8. [Code Quality Metrics](#code-quality-metrics)
+
+---
+
 ## POC Journey
 
 This Azure CLI integration represents **Stage 3 of a comprehensive proof-of-concept** to validate network diagnostics for AKS clusters.
@@ -30,19 +43,6 @@ This Azure CLI integration represents **Stage 3 of a comprehensive proof-of-conc
 - Complete POC ready for stakeholder review
 
 **Goal**: The ultimate objective was always to provide this functionality as an `az aks` subcommand. The standalone versions were intermediate steps to validate the diagnostic logic and Azure integration patterns before committing to the full CLI integration.
-
----
-
-## Table of Contents
-
-1. [POC Journey](#poc-journey)
-2. [Architecture Overview](#architecture-overview)
-3. [Integration Design](#integration-design)
-4. [Module Breakdown](#module-breakdown)
-5. [Data Flow](#data-flow)
-6. [Authentication Architecture](#authentication-architecture)
-7. [Design Decisions](#design-decisions)
-8. [Code Quality Metrics](#code-quality-metrics)
 
 ---
 
