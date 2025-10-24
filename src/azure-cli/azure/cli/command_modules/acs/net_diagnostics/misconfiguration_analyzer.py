@@ -369,6 +369,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                 if dns_servers:
                     for dns_server in dns_servers:
                         dns_host_vnet = self._find_dns_server_host_vnet(
+                            cluster_info,
                             dns_server
                         )
                         
@@ -447,34 +448,96 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
 
     def _find_dns_server_host_vnet(
         self,
+        cluster_info: Dict[str, Any],
         dns_server_ip: str
     ) -> Optional[Dict[str, str]]:
-        """Find which VNet hosts the given DNS server IP"""
+        """Find which VNet hosts the given DNS server IP
+        
+        Checks VNets that are peered with the cluster VNet to find where
+        the custom DNS server is hosted.
+        """
         try:
-            # List all VNets in subscription using SDK
-            # (replaces: az network vnet list)
-            vnets_list = list(self.network_client.virtual_networks.list_all())
-
+            # First, get the cluster's VNet
+            agent_pools = cluster_info.get("agent_pool_profiles", [])
+            if not agent_pools:
+                return None
+                
+            vnet_subnet_id = agent_pools[0].get("vnet_subnet_id")
+            if not vnet_subnet_id:
+                return None
+                
+            # Parse cluster VNet info from subnet ID
+            parts = vnet_subnet_id.split("/")
+            if len(parts) < 9:
+                return None
+                
+            cluster_vnet_rg = parts[4]
+            cluster_vnet_name = parts[8]
+            
+            # Get cluster VNet to find peerings
+            try:
+                cluster_vnet = self.network_client.virtual_networks.get(
+                    cluster_vnet_rg,
+                    cluster_vnet_name
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.debug("Could not get cluster VNet: %s", e)
+                return None
+            
             dns_ip = ipaddress.ip_address(dns_server_ip)
-
-            for vnet in vnets_list:
-                vnet_dict = self._to_dict(vnet.as_dict())
-                address_space = vnet_dict.get("address_space", {})
-                address_prefixes = address_space.get("address_prefixes", [])
-                for prefix in address_prefixes:
-                    try:
-                        network = ipaddress.ip_network(prefix, strict=False)
-                        if dns_ip in network:
-                            return {
-                                "id": vnet_dict.get("id", ""),
-                                "name": vnet_dict.get("name", ""),
-                                "resource_group": vnet_dict.get(
-                                    "resource_group",
-                                    ""
-                                ),
-                            }
-                    except Exception:  # pylint: disable=broad-except
+            
+            # Track the best match (most specific network)
+            best_match = None
+            smallest_prefix_len = -1
+            
+            # Get peerings
+            peerings = cluster_vnet.virtual_network_peerings or []
+            
+            for peering in peerings:
+                if not peering.remote_virtual_network:
+                    continue
+                    
+                # Parse remote VNet ID
+                remote_vnet_id = peering.remote_virtual_network.id
+                remote_parts = remote_vnet_id.split("/")
+                if len(remote_parts) < 9:
+                    continue
+                    
+                remote_vnet_rg = remote_parts[4]
+                remote_vnet_name = remote_parts[8]
+                
+                try:
+                    # Get the peered VNet
+                    remote_vnet = self.network_client.virtual_networks.get(
+                        remote_vnet_rg,
+                        remote_vnet_name
+                    )
+                    
+                    # Check if this VNet contains the DNS IP
+                    address_space = remote_vnet.address_space
+                    if not address_space:
                         continue
+                        
+                    for prefix in address_space.address_prefixes or []:
+                        try:
+                            network = ipaddress.ip_network(prefix, strict=False)
+                            if dns_ip in network:
+                                # Check if this is more specific than previous match
+                                if network.prefixlen > smallest_prefix_len:
+                                    smallest_prefix_len = network.prefixlen
+                                    best_match = {
+                                        "id": remote_vnet.id,
+                                        "name": remote_vnet.name,
+                                        "resource_group": remote_vnet_rg,
+                                    }
+                        except Exception:  # pylint: disable=broad-except
+                            continue
+                            
+                except Exception as e:  # pylint: disable=broad-except
+                    self.logger.debug("Could not get peered VNet %s: %s", remote_vnet_name, e)
+                    continue
+
+            return best_match
 
         except Exception as e:  # pylint: disable=broad-except
             self.logger.info("Could not find DNS server host VNet: %s", e)

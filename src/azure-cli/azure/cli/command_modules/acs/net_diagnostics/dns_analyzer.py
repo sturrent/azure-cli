@@ -232,21 +232,21 @@ class DNSAnalyzer(BaseAnalyzer):
             non_azure_dns = [dns for dns in dns_servers if dns != azure_dns]
 
             if non_azure_dns and is_private_cluster:
-                # Private cluster with custom DNS - high risk
+                # Private cluster with custom DNS - potential issue
                 self.add_finding(
-                    Finding.create_critical(
+                    Finding.create_warning(
                         code=FindingCode.PRIVATE_DNS_MISCONFIGURED,
                         message=(
                             f"Private cluster is using custom DNS servers ({', '.join(non_azure_dns)}) "
-                            f"that cannot resolve Azure private DNS zones"
+                            f"which may not resolve Azure private DNS zones"
                         ),
                         recommendation=(
-                            f"For private clusters, ensure custom DNS servers forward Azure private DNS zone queries "  # pylint: disable=line-too-long
-                            f"to Azure DNS (168.63.129.16). "
+                            f"For private clusters, custom DNS servers must be configured to resolve Azure private DNS zones. "  # pylint: disable=line-too-long
                             f"Current DNS servers: {', '.join(dns_servers)}. "
-                            f"Either: (1) Configure DNS forwarding to 168.63.129.16 for '*.privatelink.*.azmk8s.io', "  # pylint: disable=line-too-long
-                            f"(2) Use Azure DNS as primary DNS server, or "
-                            f"(3) Configure conditional forwarding in your custom DNS solution."
+                            f"Ensure one of the following: "
+                            f"(1) DNS server VNet is linked to the private DNS zone, OR "
+                            f"(2) Configure DNS forwarding to Azure DNS (168.63.129.16) for '*.privatelink.*.azmk8s.io', OR "  # pylint: disable=line-too-long
+                            f"(3) Use Azure DNS (168.63.129.16) as primary DNS server."
                         ),
                         vnetName=vnet_name,
                         vnetResourceGroup=vnet_rg,
