@@ -244,22 +244,22 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Only collect PERMISSION_INSUFFICIENT_* findings, not all findings
     permission_findings = []
     if hasattr(collector, 'findings') and collector.findings:
-        perm_findings = [f.to_dict() for f in collector.findings 
-                        if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+        perm_findings = [f.to_dict() for f in collector.findings
+                         if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
         if perm_findings:
             logger.debug("Collecting %d permission findings from cluster data collector", len(perm_findings))
             permission_findings.extend(perm_findings)
 
     if hasattr(outbound_analyzer, 'findings') and outbound_analyzer.findings:
-        perm_findings = [f.to_dict() for f in outbound_analyzer.findings 
-                        if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+        perm_findings = [f.to_dict() for f in outbound_analyzer.findings
+                         if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
         if perm_findings:
             logger.debug("Collecting %d permission findings from outbound analyzer", len(perm_findings))
             permission_findings.extend(perm_findings)
 
     if hasattr(dns_analyzer, 'findings') and dns_analyzer.findings:
-        perm_findings = [f.to_dict() for f in dns_analyzer.findings 
-                        if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+        perm_findings = [f.to_dict() for f in dns_analyzer.findings
+                         if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
         if perm_findings:
             logger.debug("Collecting %d permission findings from DNS analyzer", len(perm_findings))
             permission_findings.extend(perm_findings)

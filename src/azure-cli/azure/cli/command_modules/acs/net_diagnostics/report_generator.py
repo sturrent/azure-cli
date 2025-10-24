@@ -263,7 +263,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 # Map severity to correct label
                 severity = finding.get("severity", "error")
                 severity_label = "[CRITICAL]" if severity == "critical" else "[ERROR]"
-                
+
                 # For cluster operation failures, show only the error code
                 # in summary mode
                 if (finding.get("code") == "CLUSTER_OPERATION_FAILURE" and
