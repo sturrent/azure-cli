@@ -1,9 +1,5 @@
 # Azure CLI AKS Net-Diagnostics Architecture
 
-**Last Updated:** October 23, 2025  
-**Status:** Phase 7 Complete - POC Ready for Review  
-**Version:** 1.0.0 (Azure CLI Integration)
-
 ---
 
 ## POC Journey
@@ -865,7 +861,6 @@ except HttpResponseError as e:
 | **Test Clusters Used** | 5 clusters | POC validation clusters |
 | **Permission Scenarios** | ✅ TESTED | Full + limited permissions |
 | **Bugs Found & Fixed** | 25 bugs | 100% resolution rate |
-| **Performance** | ✅ EXCELLENT | 8-10 seconds (67% faster than target) |
 
 ---
 
@@ -1158,15 +1153,6 @@ Tip: Use --details flag for detailed analysis
 - **[Progress Reports](./progress/)** - Phase completion details
 - **[Development Setup](./guides/DEVELOPMENT-SETUP.md)** - Environment configuration
 - **[POC Standalone Version](https://github.com/sturrent/aks-net-diagnostics/blob/azure-sdk/docs/ARCHITECTURE.md)** - POC Stage 2 (Azure SDK version)
-
----
-
-### Contact & Support
-
-**Project Owner**: sturrent  
-**Repository**: [sturrent/azure-cli](https://github.com/sturrent/azure-cli)  
-**Branch**: `aks-net-diagnostics-integration`  
-**Status**: POC Complete - Ready for stakeholder review
 
 ---
 
