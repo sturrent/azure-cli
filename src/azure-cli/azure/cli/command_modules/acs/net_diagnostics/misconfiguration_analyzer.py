@@ -108,7 +108,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         )
 
         # Check NSG configuration issues
-        self._analyze_nsg_issues(nsg_analysis, findings)
+        self._analyze_nsg_issues(nsg_analysis, findings, permission_findings)
 
         # Check connectivity test results (only if cluster is running)
         if not self._cluster_stopped:
@@ -226,16 +226,34 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         network_profile = cluster_info.get("network_profile", {})
         outbound_type = network_profile.get("outbound_type", "loadBalancer")
 
-        # Check if we have LoadBalancer permission issues
+        # Check if we have permission issues that could prevent IP detection
         has_lb_permission_issue = any(
             f.get("code") == "PERMISSION_INSUFFICIENT_LB"
             for f in permission_findings
         )
+        has_vnet_permission_issue = any(
+            f.get("code") == "PERMISSION_INSUFFICIENT_VNET"
+            for f in permission_findings
+        )
 
+        # Debug logging
+        self.logger.debug(
+            "Checking outbound IPs: outbound_ips=%s, outbound_type=%s, "
+            "has_lb_permission_issue=%s, has_vnet_permission_issue=%s, "
+            "permission_findings_count=%d",
+            outbound_ips, outbound_type, has_lb_permission_issue,
+            has_vnet_permission_issue, len(permission_findings)
+        )
+
+        # Only report missing IPs if:
+        # 1. No outbound IPs detected
+        # 2. Outbound type requires IPs (loadBalancer or managedNATGateway)
+        # 3. It's not due to permission issues
         if (not outbound_ips and
                 outbound_type in ["loadBalancer", "managedNATGateway"] and
-                not has_lb_permission_issue):
-            # Only report missing IPs if it's not due to permission issues
+                not has_lb_permission_issue and
+                not has_vnet_permission_issue):
+            self.logger.debug("Adding NO_OUTBOUND_IPS finding")
             findings.append({
                 "severity": "warning",
                 "code": "NO_OUTBOUND_IPS",
@@ -249,6 +267,8 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                     "assigned."
                 ),
             })
+        else:
+            self.logger.debug("Skipping NO_OUTBOUND_IPS finding (permission issues detected or IPs found)")
 
     def _get_cluster_status_error(
         self,
@@ -959,7 +979,8 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
     def _analyze_nsg_issues(
         self,
         nsg_analysis: Dict[str, Any],
-        findings: List[Dict[str, Any]]
+        findings: List[Dict[str, Any]],
+        permission_findings: List[Dict[str, Any]]
     ) -> None:
         """Analyze NSG configuration issues
 
@@ -976,10 +997,25 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         # in _analyze_inter_node_communication(), so we don't duplicate them here.
 
         # Only add informational finding if no NSGs found (not created by nsg_analyzer)
+        # But don't add this finding if we couldn't check due to permission issues
         subnet_nsgs = nsg_analysis.get("subnet_nsgs", [])
         nic_nsgs = nsg_analysis.get("nic_nsgs", [])
 
-        if not subnet_nsgs and not nic_nsgs:
+        # Check if we have permission issues that prevented NSG analysis
+        has_vnet_permission_issue = any(
+            f.get("code") == "PERMISSION_INSUFFICIENT_VNET"
+            for f in permission_findings
+        )
+        has_vmss_permission_issue = any(
+            f.get("code") == "PERMISSION_INSUFFICIENT_VMSS"
+            for f in permission_findings
+        )
+
+        # Only report "no NSGs" if we actually checked and found none
+        # Don't report if we couldn't check due to permissions
+        if (not subnet_nsgs and not nic_nsgs and
+                not has_vnet_permission_issue and
+                not has_vmss_permission_issue):
             findings.append({
                 "severity": "info",
                 "code": "NSG_NO_RESTRICTIONS",

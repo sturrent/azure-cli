@@ -243,26 +243,92 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # First, collect permission findings from data collection phase
     # Only collect PERMISSION_INSUFFICIENT_* findings, not all findings
     permission_findings = []
+
+    # Check if connectivity tests were skipped due to permissions (couldn't list VMSS)
+    if (probe_test and api_probe_results.get("skipped") and
+            "permission" in api_probe_results.get("reason", "").lower()):
+        mc_rg = api_probe_results.get("mc_resource_group", "MC_ resource group")
+        permission_findings.append({
+            "severity": "warning",
+            "code": "PERMISSION_INSUFFICIENT_VMSS",
+            "message": f"Connectivity tests skipped - Missing permission to run commands on VMSS in {mc_rg}",
+            "recommendation": (
+                f"Grant the 'Virtual Machine Contributor' role on resource group '{mc_rg}' "
+                f"or assign a custom role with the "
+                f"'Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action' permission "
+                f"to run connectivity tests. "
+                f"Use: az role assignment create --role 'Virtual Machine Contributor' --assignee <principal-id> "
+                f"--scope /subscriptions/<subscription-id>/resourceGroups/{mc_rg}"
+            ),
+            "details": {
+                "resource_type": "VMSS",
+                "resource_group": mc_rg,
+                "reason": api_probe_results.get("reason"),
+                "required_permission": "Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action"
+            }
+        })
+        logger.debug("Added connectivity test permission finding (tests skipped)")
+
+    # Check if connectivity tests failed due to runCommand permission errors
+    if (probe_test and api_probe_results.get("permission_error")):
+        mc_rg = cluster_info.get("node_resource_group", "MC_ resource group")
+        permission_findings.append({
+            "severity": "warning",
+            "code": "PERMISSION_INSUFFICIENT_RUNCOMMAND",
+            "message": f"Connectivity tests failed - Missing runCommand permission on VMSS in {mc_rg}",
+            "recommendation": (
+                f"Grant the 'Virtual Machine Contributor' role on resource group '{mc_rg}' "
+                f"or assign a custom role with the "
+                f"'Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action' permission "
+                f"to run connectivity tests. "
+                f"Use: az role assignment create --role 'Virtual Machine Contributor' --assignee <principal-id> "
+                f"--scope /subscriptions/<subscription-id>/resourceGroups/{mc_rg}"
+            ),
+            "details": {
+                "resource_type": "VMSS RunCommand",
+                "resource_group": mc_rg,
+                "reason": api_probe_results.get("permission_error_reason"),
+                "required_permission": "Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action"
+            }
+        })
+        logger.debug("Added connectivity test permission finding (runCommand failed)")
     if hasattr(collector, 'findings') and collector.findings:
         perm_findings = [f.to_dict() for f in collector.findings
-                         if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+                         if f.code.value.startswith('PERMISSION_INSUFFICIENT')]
         if perm_findings:
             logger.debug("Collecting %d permission findings from cluster data collector", len(perm_findings))
             permission_findings.extend(perm_findings)
 
     if hasattr(outbound_analyzer, 'findings') and outbound_analyzer.findings:
         perm_findings = [f.to_dict() for f in outbound_analyzer.findings
-                         if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+                         if f.code.value.startswith('PERMISSION_INSUFFICIENT')]
         if perm_findings:
             logger.debug("Collecting %d permission findings from outbound analyzer", len(perm_findings))
             permission_findings.extend(perm_findings)
 
     if hasattr(dns_analyzer, 'findings') and dns_analyzer.findings:
         perm_findings = [f.to_dict() for f in dns_analyzer.findings
-                         if str(f.code).startswith('PERMISSION_INSUFFICIENT')]
+                         if f.code.value.startswith('PERMISSION_INSUFFICIENT')]
         if perm_findings:
             logger.debug("Collecting %d permission findings from DNS analyzer", len(perm_findings))
             permission_findings.extend(perm_findings)
+
+    # Deduplicate permission findings based on message
+    seen_messages = set()
+    unique_permission_findings = []
+    for finding in permission_findings:
+        msg = finding.get('message', '')
+        if msg not in seen_messages:
+            seen_messages.add(msg)
+            unique_permission_findings.append(finding)
+
+    if len(permission_findings) != len(unique_permission_findings):
+        logger.debug(
+            "Deduplicated permission findings: %d -> %d",
+            len(permission_findings),
+            len(unique_permission_findings)
+        )
+    permission_findings = unique_permission_findings
 
     # Run misconfiguration analysis with permission findings context
     misconfiguration_analyzer = MisconfigurationAnalyzer(
@@ -287,15 +353,20 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Collect findings from individual analyzers
     # DNS analyzer creates findings via add_finding() but they're not
     # included in misconfiguration_analyzer's findings
+    # Exclude permission findings as they were already added above
     if hasattr(dns_analyzer, 'findings') and dns_analyzer.findings:
-        logger.debug("Collecting %d findings from DNS analyzer", len(dns_analyzer.findings))
-        # Convert Finding objects to dicts for report generator
-        findings.extend([f.to_dict() for f in dns_analyzer.findings])
+        non_perm_findings = [f.to_dict() for f in dns_analyzer.findings
+                             if not f.code.value.startswith('PERMISSION_INSUFFICIENT')]
+        if non_perm_findings:
+            logger.debug("Collecting %d non-permission findings from DNS analyzer", len(non_perm_findings))
+            findings.extend(non_perm_findings)
 
     if hasattr(nsg_analyzer, 'findings') and nsg_analyzer.findings:
-        logger.debug("Collecting %d findings from NSG analyzer", len(nsg_analyzer.findings))
-        # Convert Finding objects to dicts for report generator
-        findings.extend([f.to_dict() for f in nsg_analyzer.findings])
+        non_perm_findings = [f.to_dict() for f in nsg_analyzer.findings
+                             if not f.code.value.startswith('PERMISSION_INSUFFICIENT')]
+        if non_perm_findings:
+            logger.debug("Collecting %d non-permission findings from NSG analyzer", len(non_perm_findings))
+            findings.extend(non_perm_findings)
 
     # Phase 10: Generate report
     logger.info("Generating diagnostic report...")

@@ -154,7 +154,22 @@ class ConnectivityTester:
             # List VMSS using SDK
             vmss_list = list(self.compute_client.virtual_machine_scale_sets.list(mc_rg))
         except (ResourceNotFoundError, HttpResponseError) as exc:
-            self.logger.info("Error listing VMSS in %s: %s", mc_rg, exc)
+            # Check if it's a permission error
+            error_str = str(exc).lower()
+            if "authorization" in error_str or "forbidden" in error_str or "permission" in error_str:
+                self.logger.warning(
+                    "  Connectivity tests skipped: Insufficient permissions to access MC_ resource group (%s). "
+                    "Grant the 'Virtual Machine Contributor' role or a custom role with "
+                    "'Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action' permission "
+                    "on the MC_ resource group to run connectivity tests.",
+                    mc_rg
+                )
+                # Mark that tests were skipped due to permissions
+                self.probe_results["skipped"] = True
+                self.probe_results["reason"] = "Insufficient permissions to access MC_ resource group"
+                self.probe_results["mc_resource_group"] = mc_rg
+            else:
+                self.logger.info("Error listing VMSS in %s: %s", mc_rg, exc)
             return instances
 
         for vmss in vmss_list:
@@ -370,7 +385,22 @@ class ConnectivityTester:
             result = self._analyze_test_result(test, response_dict, result)
 
         except (ResourceNotFoundError, HttpResponseError) as e:
-            result["analysis"] = f"Error executing test: {str(e)}"
+            error_str = str(e)
+            # Check if it's a permission error for runCommand
+            if ("AuthorizationFailed" in error_str and
+                    "runCommand/action" in error_str):
+                result["analysis"] = (
+                    "Unable to run connectivity test: Insufficient permissions. "
+                    "The 'Virtual Machine Contributor' role or "
+                    "'Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action' "
+                    "permission is required on the MC_ resource group to execute connectivity tests."
+                )
+                # Track that we have a permission error
+                if "permission_error" not in self.probe_results:
+                    self.probe_results["permission_error"] = True
+                    self.probe_results["permission_error_reason"] = result["analysis"]
+            else:
+                result["analysis"] = f"Error executing test: {error_str}"
             result["status"] = "error"
             self.logger.debug("Test '%s' SDK error: %s", test["name"], e)
         except Exception as e:  # pylint: disable=broad-except

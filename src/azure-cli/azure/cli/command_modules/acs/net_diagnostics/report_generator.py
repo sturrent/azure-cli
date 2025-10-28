@@ -181,6 +181,9 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             show_details: Enable detailed output
             json_report_path: Path to JSON report if saved
         """
+        # Store show_details as instance variable for use in helper methods
+        self.show_details = show_details
+
         print("\n" + "=" * 74)
 
         if show_details:
@@ -307,21 +310,36 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         """Print outbound IP configuration section"""
         effective_outbound = self.cluster_info.get("effective_outbound_type")
 
-        # Check if we have LoadBalancer permission issues
+        # Check if we have permission issues
         has_lb_permission_issue = any(
             f.get("code") == "PERMISSION_INSUFFICIENT_LB"
             for f in self.findings
         )
+        has_vnet_permission_issue = any(
+            f.get("code") == "PERMISSION_INSUFFICIENT_VNET"
+            for f in self.findings
+        )
 
-        if self.outbound_ips or effective_outbound:
+        # Get configured outbound type
+        configured_type = self.cluster_info.get(
+            "network_profile", {}
+        ).get("outbound_type", "loadBalancer")
+
+        # Always show outbound configuration section if it's a loadBalancer type
+        # or if we have IPs or effective override
+        show_section = (
+            self.outbound_ips or
+            effective_outbound or
+            configured_type == "loadBalancer" or
+            has_lb_permission_issue or
+            has_vnet_permission_issue
+        )
+
+        if show_section:
             print()
             print("**Outbound Configuration:**")
 
             # Check if we have UDR override situation
-            configured_type = self.cluster_info.get(
-                "network_profile", {}
-            ).get("outbound_type", "loadBalancer")
-
             if effective_outbound and effective_outbound != configured_type:
                 # UDR override detected
                 print(
@@ -334,13 +352,16 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                         "(route table)"
                     )
             elif configured_type == "loadBalancer":
-                if has_lb_permission_issue:
+                if has_lb_permission_issue or has_vnet_permission_issue:
                     # Permission issue prevents reading LoadBalancer details
                     print("- Load Balancer IPs: Unable to retrieve (insufficient permissions)")
                 elif self.outbound_ips:
                     # Regular load balancer with IPs
                     ip_list = ", ".join(self.outbound_ips)
                     print(f"- Load Balancer IPs: {ip_list}")
+                else:
+                    # No IPs and no permission issue - might be misconfiguration
+                    print("- Load Balancer IPs: None detected")
             elif configured_type == "userDefinedRouting":
                 # Regular UDR
                 print(
@@ -649,53 +670,54 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 failed = summary.get("failed", 0)
                 errors = summary.get("errors", 0)
 
-                print(f"- **Tests Executed:** {total}")
+                print(f"- **Total Tests:** {total}")
                 if passed > 0:
                     print(f"- **[OK] Passed:** {passed}")
                 if failed > 0:
                     print(f"- **[ERROR] Failed:** {failed}")
                 if errors > 0:
-                    print(f"- **[WARNING] Errors:** {errors}")
+                    print(f"- **[WARNING] Execution Failed:** {errors}")
 
-                # Show detailed results
-                tests = self.api_probe_results.get("tests", [])
-                if tests:
-                    print("\n**Test Details:**")
-                    for test in tests:
-                        status_icon = {
-                            "passed": "[OK]",
-                            "failed": "[ERROR]",
-                            "error": "[WARNING]",
-                            "skipped": "[SKIP]",
-                        }.get(test.get("status"), "[?]")
+                # Show detailed results only when --details flag is used
+                if self.show_details:
+                    tests = self.api_probe_results.get("tests", [])
+                    if tests:
+                        print("\n**Test Details:**")
+                        for test in tests:
+                            status_icon = {
+                                "passed": "[OK]",
+                                "failed": "[ERROR]",
+                                "error": "[WARNING]",
+                                "skipped": "[SKIP]",
+                            }.get(test.get("status"), "[?]")
 
-                        test_name = test.get("test_name", "Unknown Test")
-                        vmss_name = test.get("vmss_name", "unknown")
-                        exit_code = test.get("exit_code", -1)
-                        print(
-                            f"- {status_icon} **{test_name}** "
-                            f"(VMSS: {vmss_name}, Exit Code: {exit_code})"
-                        )
-
-                        # Show full test result in JSON format with compacted
-                        # newlines
-                        test_copy = test.copy()
-                        # Compact stdout and stderr for single-line display
-                        if test_copy.get("stdout"):
-                            test_copy["stdout"] = test_copy["stdout"].replace(
-                                "\n",
-                                "\\n"
-                            )
-                        if test_copy.get("stderr"):
-                            test_copy["stderr"] = test_copy["stderr"].replace(
-                                "\n",
-                                "\\n"
+                            test_name = test.get("test_name", "Unknown Test")
+                            vmss_name = test.get("vmss_name", "unknown")
+                            exit_code = test.get("exit_code", -1)
+                            print(
+                                f"- {status_icon} **{test_name}** "
+                                f"(VMSS: {vmss_name}, Exit Code: {exit_code})"
                             )
 
-                        print("  - **Full Test Result:**")
-                        print("    ```json")
-                        print(f"    {json.dumps(test_copy, indent=2)}")
-                        print("    ```")
+                            # Show full test result in JSON format with compacted
+                            # newlines
+                            test_copy = test.copy()
+                            # Compact stdout and stderr for single-line display
+                            if test_copy.get("stdout"):
+                                test_copy["stdout"] = test_copy["stdout"].replace(
+                                    "\n",
+                                    "\\n"
+                                )
+                            if test_copy.get("stderr"):
+                                test_copy["stderr"] = test_copy["stderr"].replace(
+                                    "\n",
+                                    "\\n"
+                                )
+
+                            print("  - **Full Test Result:**")
+                            print("    ```json")
+                            print(f"    {json.dumps(test_copy, indent=2)}")
+                            print("    ```")
                 print()
 
     def _print_nsg_analysis(self):
