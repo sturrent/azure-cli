@@ -15,7 +15,7 @@ Adapted for Azure CLI integration.
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
@@ -31,6 +31,7 @@ class OutboundConnectivityAnalyzer:
         agent_pools: List[Dict[str, Any]],
         clients: Dict[str, Any],
         route_table_analysis: Optional[Dict[str, Any]] = None,
+        vmss_info: Optional[List[Dict[str, Any]]] = None,
         logger: Optional[logging.Logger] = None,
     ):
         """
@@ -44,6 +45,7 @@ class OutboundConnectivityAnalyzer:
                 - subscription_id: Current subscription ID
                 - credential: Azure credentials
             route_table_analysis: Pre-computed route table analysis results (optional)
+            vmss_info: VMSS configuration data from cluster (optional)
             logger: Optional logger instance
         """
         self.cluster_info = cluster_info
@@ -52,6 +54,7 @@ class OutboundConnectivityAnalyzer:
         self.subscription_id = clients["subscription_id"]
         self.credential = clients["credential"]
         self.route_table_analysis = route_table_analysis or {}
+        self.vmss_info = vmss_info or []
         self.logger = logger or logging.getLogger(__name__)
 
         # Results storage
@@ -133,8 +136,8 @@ class OutboundConnectivityAnalyzer:
             self._analyze_load_balancer_outbound(show_details)
         elif outbound_type == "userDefinedRouting":
             self._analyze_udr_outbound()
-        elif outbound_type == "managedNATGateway":
-            self._analyze_nat_gateway_outbound(show_details)
+        elif outbound_type in ("managedNATGateway", "userAssignedNATGateway"):
+            self._analyze_nat_gateway_outbound(show_details, outbound_type)
 
         # Use pre-computed route table analysis from Phase 3
         # (no need to re-analyze - it's already been done)
@@ -455,15 +458,32 @@ class OutboundConnectivityAnalyzer:
             "internet_routes": udr_analysis.get("internet_routes", []),
         }
 
-    def _analyze_nat_gateway_outbound(self, show_details: bool = False) -> None:
+    def _analyze_nat_gateway_outbound(
+        self, show_details: bool = False, outbound_type: str = "managedNATGateway"
+    ) -> None:
         """
         Analyze NAT Gateway outbound configuration
 
         Args:
             show_details: Enable detailed logging
+            outbound_type: Type of NAT Gateway ('managedNATGateway' or 'userAssignedNATGateway')
         """
         self.logger.info("  - Analyzing NAT Gateway configuration...")
 
+        if outbound_type == "managedNATGateway":
+            # Managed NAT Gateway - look in the node resource group
+            self._analyze_managed_nat_gateway(show_details)
+        elif outbound_type == "userAssignedNATGateway":
+            # User-assigned NAT Gateway - check subnets for attached NAT Gateway
+            self._analyze_user_assigned_nat_gateway(show_details)
+
+    def _analyze_managed_nat_gateway(self, show_details: bool = False) -> None:
+        """
+        Analyze managed NAT Gateway configuration (in node resource group)
+
+        Args:
+            show_details: Enable detailed logging
+        """
         # Get the managed cluster's resource group
         mc_rg = self.cluster_info.get("node_resource_group", "")
         if not mc_rg:
@@ -533,6 +553,129 @@ class OutboundConnectivityAnalyzer:
 
         if not self.outbound_ips and show_details:
             self.logger.info("    No outbound IPs detected from NAT Gateway")
+
+    def _analyze_user_assigned_nat_gateway(self, show_details: bool = False) -> None:
+        """
+        Analyze user-assigned NAT Gateway configuration (attached to subnet)
+
+        Args:
+            show_details: Enable detailed logging
+        """
+        # Get subnet IDs from VMSS configuration
+        subnet_ids = self._get_vmss_subnet_ids()
+
+        if not subnet_ids:
+            if show_details:
+                self.logger.info("    No subnets found in VMSS configuration")
+            return
+
+        # Check each subnet for NAT Gateway
+        for subnet_id in subnet_ids:
+            self._process_subnet_nat_gateway(subnet_id, show_details)
+
+        if not self.outbound_ips and show_details:
+            self.logger.info("    No outbound IPs detected from user-assigned NAT Gateway")
+
+    def _get_vmss_subnet_ids(self) -> Set[str]:
+        """Extract unique subnet IDs from VMSS network interfaces."""
+        subnet_ids = set()
+
+        for vmss_config in self.vmss_info:
+            vm_profile = vmss_config.get("virtual_machine_profile", {})
+            network_interfaces = vm_profile.get("network_profile", {}).get("network_interface_configurations", [])
+            for nic in network_interfaces:
+                for ip_config in nic.get("ip_configurations", []):
+                    subnet_id = ip_config.get("subnet", {}).get("id")
+                    if subnet_id:
+                        subnet_ids.add(subnet_id)
+
+        return subnet_ids
+
+    def _process_subnet_nat_gateway(self, subnet_id: str, show_details: bool) -> None:
+        """Process a subnet to check for attached NAT Gateway."""
+        # Parse subnet resource ID
+        # Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
+        #         Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}
+        parts = subnet_id.split("/")
+        if len(parts) < 11:
+            if show_details:
+                self.logger.warning("    Invalid subnet ID format: %s", subnet_id)
+            return
+
+        resource_group = parts[4]
+        vnet_name = parts[8]
+        subnet_name = parts[10]
+
+        try:
+            subnet_info = self.network_client.subnets.get(
+                resource_group_name=resource_group,
+                virtual_network_name=vnet_name,
+                subnet_name=subnet_name,
+            )
+
+            if not subnet_info.nat_gateway:
+                return
+
+            self._extract_nat_gateway_ips(subnet_info.nat_gateway.id, show_details)
+        except (ResourceNotFoundError, HttpResponseError) as ex:
+            if show_details:
+                self.logger.warning("    Failed to get subnet info: %s", str(ex))
+
+    def _extract_nat_gateway_ips(self, nat_gw_id: str, show_details: bool) -> None:
+        """Extract public IPs from NAT Gateway."""
+        nat_gw_parsed = self._parse_resource_id(nat_gw_id)
+        natgw = self.network_client.nat_gateways.get(
+            nat_gw_parsed["resource_group"],
+            nat_gw_parsed["resource_name"]
+        )
+
+        # Process public IPs
+        for public_ip_ref in (natgw.public_ip_addresses or []):
+            self._process_nat_gateway_public_ip(public_ip_ref, show_details)
+
+        # Process public IP prefixes
+        for prefix_ref in (natgw.public_ip_prefixes or []):
+            self._process_nat_gateway_ip_prefix(prefix_ref, show_details)
+
+    def _process_nat_gateway_public_ip(self, public_ip_ref: Any, show_details: bool) -> None:
+        """Process a single public IP from NAT Gateway."""
+        public_ip_id = public_ip_ref.id if public_ip_ref else None
+        if not public_ip_id:
+            return
+
+        public_ip_info = self._get_public_ip_details(public_ip_id)
+        if public_ip_info:
+            ip_address = public_ip_info.get("ip_address", "")
+            if ip_address:
+                self.outbound_ips.append(ip_address)
+                if show_details:
+                    self.logger.info("      Public IP: %s", ip_address)
+
+    def _process_nat_gateway_ip_prefix(self, prefix_ref: Any, show_details: bool) -> None:
+        """Process a single IP prefix from NAT Gateway."""
+        prefix_id = (
+            prefix_ref.get("id", "")
+            if hasattr(prefix_ref, 'get')
+            else (prefix_ref.id if prefix_ref else "")
+        )
+        if not prefix_id:
+            return
+
+        prefix_info = self._get_public_ip_prefix_details(prefix_id)
+        if not prefix_info:
+            return
+
+        ip_prefix = prefix_info.get("ip_prefix", "")
+        if ip_prefix:
+            if show_details:
+                self.logger.info("      Public IP Prefix: %s", ip_prefix)
+            # Validate and add the prefix
+            try:
+                import ipaddress  # pylint: disable=import-outside-toplevel
+                ipaddress.ip_network(ip_prefix, strict=False)
+                self.outbound_ips.append(f"{ip_prefix} (range)")
+            except Exception:  # pylint: disable=broad-except
+                self.outbound_ips.append(f"{ip_prefix} (prefix)")
 
     def _get_public_ip_details(self, public_ip_id: str) -> Optional[Dict[str, Any]]:
         """

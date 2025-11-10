@@ -200,6 +200,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         agent_pools=agent_pools,
         clients=clients,
         route_table_analysis=route_table_analysis,
+        vmss_info=vmss_analysis,
         logger=logger
     )
     outbound_analysis = outbound_analyzer.analyze(show_details=details)

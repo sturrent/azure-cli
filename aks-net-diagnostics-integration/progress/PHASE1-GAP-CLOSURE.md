@@ -3,7 +3,7 @@
 **Phase:** Quick Wins  
 **Start Date:** November 10, 2025  
 **Estimated Duration:** 8-12 hours  
-**Status:** IN PROGRESS (50% Complete - 2/4 tasks)
+**Status:** IN PROGRESS (75% Complete - 3/4 tasks)
 
 ---
 
@@ -12,7 +12,7 @@
 Phase 1 focuses on closing easy gaps to improve coverage and build momentum. This includes:
 - ✅ Azure CNI Overlay NSG validation
 - ✅ Enhanced CNI mode display (clarity improvement discovered during Task 1.2)
-- ⏳ User-assigned NAT Gateway validation
+- ✅ User-assigned NAT Gateway validation
 - ⏳ AKS LocalDNS feature support
 
 ---
@@ -455,63 +455,224 @@ Currently showing subnet *names* (e.g., "nodesubnet", "podsubnet") but not IP ra
 
 ---
 
-## Task 1.3: User-Assigned NAT Gateway Validation
+## Task 1.3: User-Assigned NAT Gateway Validation ✅
 
-**Status:** NOT STARTED  
-**Priority:** 🟢 LOW (but easy to test)  
-**Estimated Time:** 2-3 hours
+**Status:** COMPLETED  
+**Time Spent:** ~4 hours  
+**Priority:** 🟢 LOW (but revealed implementation gap)
 
 ### Objective
 Create test cluster with user-assigned NAT Gateway and validate detection logic in `outbound_analyzer.py`.
 
-### Plan
+### Background
+The tool already supported `managedNATGateway` (NAT Gateway created in node resource group), but `userAssignedNATGateway` (NAT Gateway attached to user-provided subnet) required a different detection approach. This mode is used when customers bring their own VNet with a pre-configured NAT Gateway.
 
-1. **Create Test Cluster**
-   - Create NAT Gateway with public IP
-   - Attach NAT Gateway to subnet
-   - Create AKS cluster with `--outbound-type userAssignedNATGateway`
+### Implementation
 
-2. **Validate Detection**
-   - Run diagnostics on test cluster
-   - Verify NAT Gateway detection
-   - Verify public IP identification
-   - Check for any false findings
+#### Changes Made
 
-3. **Update Documentation**
-   - Update COVERAGE-MATRIX.md (⚠️ → ✅)
-   - Document user-assigned NAT Gateway support
+1. **Enhanced OutboundConnectivityAnalyzer** (`outbound_analyzer.py`)
+   - Added `vmss_info` parameter to `__init__` (needed to access VMSS network configuration)
+   - Refactored `_analyze_nat_gateway_outbound()` to dispatch between managed and user-assigned modes
+   - Added `_analyze_user_assigned_nat_gateway()` method - Main orchestrator
+   - Added `_get_vmss_subnet_ids()` helper - Extract subnet IDs from VMSS configs
+   - Added `_process_subnet_nat_gateway()` helper - Check subnet for NAT Gateway attachment
+   - Added subnet resource ID parsing logic (handles `/virtualNetworks/{vnet}/subnets/{subnet}` format)
+   - Fixed exception handling to use `(ResourceNotFoundError, HttpResponseError)` (consistent with codebase)
 
-### Test Commands
+2. **Updated Orchestrator** (`orchestrator.py`)
+   - Pass `vmss_info=vmss_analysis` to `OutboundConnectivityAnalyzer`
+
+3. **Enhanced Report Generator** (`report_generator.py`)
+   - Added `userAssignedNATGateway` case in `_print_outbound_configuration()`
+   - Displays: "User-Assigned NAT Gateway" with detected public IPs
+
+#### Detection Logic Flow
+
+```
+1. Detect outbound type = userAssignedNATGateway
+2. Get subnet IDs from VMSS network configuration
+3. For each subnet:
+   a. Query subnet details via NetworkManagementClient
+   b. Check if subnet.nat_gateway exists
+   c. If found, get NAT Gateway resource
+   d. Extract public IPs from NAT Gateway
+   e. Add to outbound_ips list
+```
+
+#### Key Technical Decisions
+
+**Why VMSS-based detection?**
+- User-assigned NAT Gateway is attached to subnets, not to AKS resources
+- VMSS network configuration contains subnet IDs where nodes are deployed
+- This approach mirrors how the tool handles other subnet-based configurations
+
+**Resource ID Parsing:**
+- Subnet IDs follow Azure format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}`
+- Extracted parts: `resource_group = parts[4]`, `vnet_name = parts[8]`, `subnet_name = parts[10]`
+
+#### Testing
+
+**Test Infrastructure Created:**
+- **Resource Group:** aks-BYO-NatGw-RG (canadacentral)
+- **VNet:** aks-nat-vnet (10.100.0.0/16)
+- **Subnet:** aks-subnet (10.100.1.0/24)
+- **NAT Gateway:** aks-nat-gateway
+- **Public IP:** nat-gateway-pip (4.206.74.173, Standard SKU, Static)
+- **AKS Cluster:** aks-BYO-NatGw
+  - Kubernetes: 1.32.9
+  - Node Count: 2 (Standard_B2ms)
+  - Network Plugin: Azure CNI (Node Subnet mode)
+  - Outbound Type: userAssignedNATGateway
+
+**Test Commands Used:**
 ```bash
-# Create NAT Gateway
-az network nat gateway create \
-  --resource-group aks-test-rg \
-  --name test-nat-gateway \
-  --public-ip-addresses nat-gateway-pip \
-  --location eastus
+# Create NAT Gateway infrastructure
+az network public-ip create \
+  --resource-group aks-BYO-NatGw-RG \
+  --name nat-gateway-pip \
+  --sku Standard \
+  --allocation-method Static
 
-# Create VNet with NAT Gateway
+az network nat gateway create \
+  --resource-group aks-BYO-NatGw-RG \
+  --name aks-nat-gateway \
+  --public-ip-addresses nat-gateway-pip \
+  --location canadacentral
+
 az network vnet create \
-  --resource-group aks-test-rg \
-  --name test-vnet \
-  --address-prefix 10.0.0.0/16 \
+  --resource-group aks-BYO-NatGw-RG \
+  --name aks-nat-vnet \
+  --address-prefix 10.100.0.0/16 \
   --subnet-name aks-subnet \
-  --subnet-prefix 10.0.1.0/24
+  --subnet-prefix 10.100.1.0/24
 
 az network vnet subnet update \
-  --resource-group aks-test-rg \
-  --vnet-name test-vnet \
+  --resource-group aks-BYO-NatGw-RG \
+  --vnet-name aks-nat-vnet \
   --name aks-subnet \
-  --nat-gateway test-nat-gateway
+  --nat-gateway aks-nat-gateway
 
 # Create AKS cluster
 az aks create \
-  --resource-group aks-test-rg \
-  --name aks-user-nat \
+  --resource-group aks-BYO-NatGw-RG \
+  --name aks-BYO-NatGw \
   --vnet-subnet-id /subscriptions/.../aks-subnet \
   --outbound-type userAssignedNATGateway \
-  --network-plugin azure
+  --network-plugin azure \
+  --node-count 2 \
+  --node-vm-size Standard_B2ms \
+  --location canadacentral
 ```
+
+#### Test Results
+
+**Diagnostic Output:**
+```
+**Cluster:** aks-BYO-NatGw (Succeeded)
+**Resource Group:** aks-BYO-NatGw-RG
+
+**Configuration:**
+- Network Plugin: Azure CNI (Node Subnet)
+- Outbound Type: userAssignedNATGateway
+- Private Cluster: false
+
+**Outbound Configuration:**
+- Outbound: User-Assigned NAT Gateway
+- NAT Gateway IPs: 4.206.74.173
+```
+
+**Validation:**
+- ✅ NAT Gateway correctly detected
+- ✅ Public IP (4.206.74.173) correctly identified
+- ✅ Outbound type displayed as "User-Assigned NAT Gateway"
+- ✅ No false findings or errors
+- ✅ Consistent with managed NAT Gateway display format
+
+#### Debugging Journey
+
+**Issue 1: VMSS info not available**
+- **Problem:** Initially used `cluster_info["vmss"]` which was empty
+- **Root Cause:** VMSS data collected separately in `vmss_analysis`, not stored in `cluster_info`
+- **Fix:** Added `vmss_info` parameter to analyzer, passed from orchestrator
+
+**Issue 2: Resource ID parsing error**
+- **Problem:** Generic `_parse_resource_id()` expected simpler format, failed with 'vnet_name' KeyError
+- **Root Cause:** Subnet IDs have nested structure: `virtualNetworks/{vnet}/subnets/{subnet}`
+- **Fix:** Inline parsing using `parts[4]`, `parts[8]`, `parts[10]` for subnet-specific format
+
+**Issue 3: Function signature mismatch**
+- **Problem:** Called `_extract_nat_gateway_ips(nat_gw_id, subscription_id, show_details)` but function only accepts 2 params
+- **Root Cause:** Function already parses subscription_id from nat_gw_id
+- **Fix:** Removed subscription_id parameter from call
+
+**Issue 4: Report not showing IPs**
+- **Problem:** IPs detected and added to `outbound_ips` but not displayed
+- **Root Cause:** Report generator missing `userAssignedNATGateway` case
+- **Fix:** Added elif branch for userAssignedNATGateway in `_print_outbound_configuration()`
+
+### Success Criteria
+
+- [x] Test cluster created with user-assigned NAT Gateway
+- [x] NAT Gateway correctly detected via VMSS subnet analysis
+- [x] Public IP correctly identified (4.206.74.173)
+- [x] Outbound configuration section displays NAT Gateway mode and IPs
+- [x] No false positive findings
+- [x] Code quality: Pylint 10.00/10
+- [x] Consistent exception handling with codebase patterns
+- [x] Report format matches managed NAT Gateway display
+
+### Files Modified
+
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/outbound_analyzer.py`
+  - Added `vmss_info` parameter to `__init__` with Optional type hint
+  - Refactored `_analyze_nat_gateway_outbound()` as dispatcher (~20 lines)
+  - Renamed existing method to `_analyze_managed_nat_gateway()` 
+  - Added `_analyze_user_assigned_nat_gateway()` method (~20 lines)
+  - Added `_get_vmss_subnet_ids()` helper (~15 lines)
+  - Added `_process_subnet_nat_gateway()` helper (~30 lines)
+  - Updated imports: Added `Set` to typing imports
+  - Total: ~85 lines added/modified
+
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/orchestrator.py`
+  - Added `vmss_info=vmss_analysis` parameter to OutboundConnectivityAnalyzer call (~1 line)
+
+- `src/azure-cli/azure/cli/command_modules/acs/net_diagnostics/report_generator.py`
+  - Added `userAssignedNATGateway` case in `_print_outbound_configuration()` (~8 lines)
+
+### Impact
+
+**Coverage Improvement:**
+- User-assigned NAT Gateway detection: 0% → 100%
+- Outbound type coverage: 75% → 100% (all 4 types now supported)
+
+**Supported Outbound Types:**
+- ✅ loadBalancer
+- ✅ userDefinedRouting
+- ✅ managedNATGateway (AKS-managed in node RG)
+- ✅ userAssignedNATGateway (BYO VNet scenario) - **NEW**
+
+**User Value:**
+- Customers using BYO VNet with NAT Gateway now get complete diagnostics
+- Public IP visibility helps with firewall rule configuration
+- Validates NAT Gateway attachment to subnet
+- Consistent UX across all outbound types
+
+### Code Quality
+
+- **Pylint Score:** 10.00/10 ✅
+- **Exception Handling:** Matches codebase patterns (`ResourceNotFoundError`, `HttpResponseError`)
+- **Type Hints:** Proper use of `Optional`, `Set`, `List`, `Dict`, `Any`
+- **Code Structure:** Follows existing helper method pattern
+- **Naming:** Clear, descriptive method names following `_verb_noun` convention
+
+### Lessons Learned
+
+1. **VMSS data structure:** VMSS info is collected separately, not in `cluster_info`
+2. **Resource ID parsing:** Different Azure resources have different ID formats - subnet IDs are nested
+3. **Debugging strategy:** Strategic debug logging at key decision points quickly revealed issues
+4. **Test-driven discovery:** Creating real test infrastructure exposed implementation gaps quickly
+5. **Exception consistency:** Following codebase patterns prevents new pylint warnings
 
 ---
 
@@ -569,18 +730,18 @@ az aks net-diagnostics -n test-cluster -g aks-test-rg --probe-test
 
 ## Phase 1 Summary
 
-### Completed Tasks: 2/4 (50%)
+### Completed Tasks: 3/4 (75%)
 
 | Task | Status | Time | Priority | Impact |
 |------|--------|------|----------|--------|
 | 1.1: Azure CNI Overlay NSG | ✅ DONE | 3h | HIGH | High - Prevents overlay misconfigurations |
 | 1.2: Enhanced CNI Mode Display | ✅ DONE | 3h | HIGH | CRITICAL - CNI clarity + consistency |
-| 1.3: User-Assigned NAT Gateway | ⏳ TODO | 2-3h | LOW | Low - Validation only |
+| 1.3: User-Assigned NAT Gateway | ✅ DONE | 4h | LOW | Medium - BYO VNet scenario support |
 | 1.4: AKS LocalDNS | ⏳ TODO | 2-3h | MEDIUM | Medium - DNS accuracy |
 
-### Total Time Spent: 6 hours
-### Estimated Remaining: 4-6 hours
-### Overall Progress: 50% (6/12 hours)
+### Total Time Spent: 10 hours
+### Estimated Remaining: 2-3 hours
+### Overall Progress: 75% (10/13 hours)
 
 ### Key Achievements
 
@@ -619,6 +780,13 @@ az aks net-diagnostics -n test-cluster -g aks-test-rg --probe-test
      - Comprehensive information when needed
    - Eliminates duplicate information (pod CIDR shown once in Configuration)
 
+5. **Implemented User-Assigned NAT Gateway Detection**
+   - Added support for `userAssignedNATGateway` outbound type
+   - VMSS subnet-based NAT Gateway discovery
+   - Extracts public IPs from NAT Gateway attached to user-provided subnets
+   - Complete outbound type coverage (all 4 types supported)
+   - BYO VNet scenario now fully supported
+
 ### Technical Highlights
 
 **NSG Analysis Enhancement:**
@@ -637,15 +805,25 @@ az aks net-diagnostics -n test-cluster -g aks-test-rg --probe-test
 - Consistent across summary and detailed views
 - JSON report preserves full network profile
 
+**User-Assigned NAT Gateway Detection:**
+- 85 lines added to `outbound_analyzer.py`
+- VMSS subnet-based NAT Gateway discovery
+- Inline subnet resource ID parsing
+- Consistent exception handling patterns
+- 10.00/10 pylint score maintained
+- Complete outbound type coverage (4/4 types)
+
 ### Files Modified (Total)
 
 - `models.py` - Added 2 finding codes (NSG_POD_CIDR_BLOCKED, NSG_POD_CIDR_PARTIAL)
 - `nsg_analyzer.py` - Added ~260 lines, overlay and pod subnet NSG analysis
-- `orchestrator.py` - Added agent_pools parameter to ReportGenerator
-- `report_generator.py` - Modified ~190 lines:
+- `orchestrator.py` - Added agent_pools parameter to ReportGenerator, vmss_info to OutboundConnectivityAnalyzer
+- `outbound_analyzer.py` - Added ~85 lines, user-assigned NAT Gateway detection
+- `report_generator.py` - Modified ~200 lines:
   - Task 1.2a: CNI mode display (~75 lines added, ~25 removed for duplication)
   - Task 1.2b: Consistency fixes (~40 lines modified)
   - Task 1.2c: Node pool enhancements (~75 lines modified - includes compact formatting)
+  - Task 1.3: User-assigned NAT Gateway display (~8 lines added)
 
 ### Test Coverage
 
@@ -653,12 +831,14 @@ az aks net-diagnostics -n test-cluster -g aks-test-rg --probe-test
 - aks-overlay (Azure CNI Overlay, single pool)
 - aks-acni-podsubnet (Azure CNI Pod Subnet, 2 pools)
 - good-cluster (Azure CNI Overlay)
+- aks-BYO-NatGw (Azure CNI Node Subnet, userAssignedNATGateway)
 
 **Results:**
 - ✅ All clusters correctly identify CNI mode
 - ✅ Overlay mode shows pod CIDR in Configuration
 - ✅ Pod subnet mode shows per-pool pod subnets
 - ✅ NSG analysis covers all relevant subnets (node + pod)
+- ✅ User-assigned NAT Gateway detected with correct public IP
 - ✅ JSON reports contain complete network profile
 - ✅ No duplicate information
 - ✅ Clean, professional output
@@ -671,13 +851,15 @@ az aks net-diagnostics -n test-cluster -g aks-test-rg --probe-test
 - ❌ CNI mode display: Confusing, incomplete
 - ❌ Network configuration clarity: Poor
 
-**After Phase 1 (Tasks 1.1-1.2):**
+**After Phase 1 (Tasks 1.1-1.3):**
 - ✅ Azure CNI Overlay NSG validation: Complete with actionable findings
 - ✅ Pod subnet NSG analysis: All subnets analyzed (2→4 NSGs on test cluster)
 - ✅ CNI mode display: Crystal clear, comprehensive, **consistent**
 - ✅ Network configuration clarity: Excellent (7 modes supported)
 - ✅ Summary vs Detailed views: **Perfectly aligned and consistent**
 - ✅ Node pool visibility: **Always shown with complete information**
+- ✅ User-assigned NAT Gateway: **Complete detection and display**
+- ✅ Outbound type coverage: **100% (all 4 types supported)**
 
 **User Experience:**
 - 🎯 Network engineers can immediately understand cluster networking

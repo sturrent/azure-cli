@@ -507,6 +507,16 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 )
             elif configured_type == "managedNATGateway":
                 print("- Outbound: Managed NAT Gateway")
+                if self.outbound_ips:
+                    ip_list = ", ".join(self.outbound_ips)
+                    print(f"- NAT Gateway IPs: {ip_list}")
+            elif configured_type == "userAssignedNATGateway":
+                print("- Outbound: User-Assigned NAT Gateway")
+                if self.outbound_ips:
+                    ip_list = ", ".join(self.outbound_ips)
+                    print(f"- NAT Gateway IPs: {ip_list}")
+                else:
+                    print("- NAT Gateway IPs: None detected")
 
     def _print_connectivity_tests(self):
         """Print connectivity test results section"""
