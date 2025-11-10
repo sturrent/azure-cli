@@ -57,6 +57,8 @@ class APIServerAccessAnalyzer:  # pylint: disable=too-few-public-methods
         Returns:
             Dictionary containing analysis results with keys:
             - private_cluster: bool
+            - vnet_integration: bool
+            - access_mode: str ('public', 'private_endpoint', 'vnet_integration_public', 'vnet_integration_private')
             - authorized_ip_ranges: list
             - disable_run_command: bool
             - analysis: dict with detailed analysis
@@ -70,6 +72,8 @@ class APIServerAccessAnalyzer:  # pylint: disable=too-few-public-methods
                 self.logger.info("  - No API server access profile found")
             return {
                 "private_cluster": False,
+                "vnet_integration": False,
+                "access_mode": "public",
                 "authorized_ip_ranges": [],
                 "disable_run_command": False,
                 "analysis": {"ip_range_restriction": "none"},
@@ -77,9 +81,18 @@ class APIServerAccessAnalyzer:  # pylint: disable=too-few-public-methods
                 "access_restrictions": {},
             }
 
+        # Detect API Server VNet Integration
+        vnet_integration = self._is_vnet_integration_enabled(api_server_profile)
+        private_cluster = api_server_profile.get("enable_private_cluster", False)
+
+        # Determine access mode
+        access_mode = self._determine_access_mode(private_cluster, vnet_integration)
+
         # Initialize analysis result
         self.analysis_result = {
-            "private_cluster": api_server_profile.get("enable_private_cluster", False),
+            "private_cluster": private_cluster,
+            "vnet_integration": vnet_integration,
+            "access_mode": access_mode,
             "authorized_ip_ranges": api_server_profile.get("authorized_ip_ranges", []),
             "disable_run_command": api_server_profile.get("disable_run_command", False),
             "analysis": {},
@@ -93,6 +106,45 @@ class APIServerAccessAnalyzer:  # pylint: disable=too-few-public-methods
         self._analyze_access_restrictions()
 
         return self.analysis_result
+
+    def _is_vnet_integration_enabled(self, api_server_profile: Dict[str, Any]) -> bool:
+        """
+        Check if API Server VNet Integration is enabled.
+
+        API Server VNet Integration projects the API server directly into a delegated subnet
+        without requiring a private endpoint or tunnel.
+
+        Args:
+            api_server_profile: API server access profile dictionary
+
+        Returns:
+            True if VNet integration is enabled, False otherwise
+        """
+        additional_props = api_server_profile.get("additional_properties", {})
+        return additional_props.get("enableVnetIntegration", False)
+
+    def _determine_access_mode(self, private_cluster: bool, vnet_integration: bool) -> str:
+        """
+        Determine the API server access mode based on configuration.
+
+        Args:
+            private_cluster: Whether private cluster is enabled
+            vnet_integration: Whether VNet integration is enabled
+
+        Returns:
+            Access mode string:
+            - 'public': Public cluster without VNet integration
+            - 'private_endpoint': Private cluster with private endpoint (traditional)
+            - 'vnet_integration_public': VNet integration with public access enabled
+            - 'vnet_integration_private': VNet integration with public access disabled
+        """
+        if vnet_integration:
+            if private_cluster:
+                return "vnet_integration_private"
+            return "vnet_integration_public"
+        if private_cluster:
+            return "private_endpoint"
+        return "public"
 
     def _analyze_authorized_ip_ranges(self):
         """Analyze authorized IP ranges configuration"""

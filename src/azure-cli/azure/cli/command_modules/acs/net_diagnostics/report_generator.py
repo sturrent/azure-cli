@@ -721,9 +721,27 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             if api_server_profile else False
         )
 
-        if is_private and api_server_profile:
-            print("- **Type:** Private cluster")
+        # Check for VNet integration
+        vnet_integration = False
+        if api_server_profile:
+            additional_props = api_server_profile.get("additional_properties", {})
+            vnet_integration = additional_props.get("enableVnetIntegration", False)
 
+        # Determine access mode
+        if vnet_integration:
+            if is_private:
+                print("- **Type:** Private cluster with API Server VNet Integration")
+                print("- **Access Mode:** API server projected into delegated subnet (private mode)")
+            else:
+                print("- **Type:** Public cluster with API Server VNet Integration")
+                print("- **Access Mode:** API server projected into delegated subnet (public access enabled)")
+        elif is_private:
+            print("- **Type:** Private cluster (Private Endpoint)")
+            print("- **Access Mode:** Private endpoint via Private Link")
+        else:
+            print("- **Type:** Public cluster")
+
+        if is_private and api_server_profile:
             # Try multiple sources for private FQDN
             private_fqdn = ""
             if api_server_profile.get("private_fqdn"):
@@ -737,7 +755,6 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 f"{api_server_profile.get('private_dns_zone', '')}"
             )
         else:
-            print("- **Type:** Public cluster")
             print(f"- **Public FQDN:** {self.cluster_info.get('fqdn', '')}")
 
         # Add authorized IP ranges information

@@ -122,6 +122,7 @@ class DNSAnalyzer(BaseAnalyzer):
             self.dns_analysis = {
                 "type": "none",
                 "is_private_cluster": False,
+                "vnet_integration": False,
                 "private_dns_zone": None,
                 "analysis": "No API server access profile found - not a private cluster",
             }
@@ -129,23 +130,43 @@ class DNSAnalyzer(BaseAnalyzer):
 
         is_private = api_server_profile.get("enable_private_cluster", False)
 
+        # Check for API Server VNet Integration
+        vnet_integration = self._is_vnet_integration_enabled(api_server_profile)
+
         if not is_private:
-            self.dns_analysis = {
-                "type": "none",
-                "is_private_cluster": False,
-                "private_dns_zone": None,
-                "analysis": "Public cluster - private DNS not required",
-            }
+            # Public cluster - check if it has VNet integration
+            if vnet_integration:
+                self.dns_analysis = {
+                    "type": "vnet_integration_public",
+                    "is_private_cluster": False,
+                    "vnet_integration": True,
+                    "private_dns_zone": None,
+                    "analysis": "Public cluster with API Server VNet Integration - private DNS not required",
+                }
+                self.logger.warning("  API Server VNet Integration (public mode) - nodes use private IP without DNS")
+            else:
+                self.dns_analysis = {
+                    "type": "none",
+                    "is_private_cluster": False,
+                    "vnet_integration": False,
+                    "private_dns_zone": None,
+                    "analysis": "Public cluster - private DNS not required",
+                }
             return
 
         # Private cluster - analyze DNS configuration
         private_dns_zone = api_server_profile.get("private_dns_zone", "")
+
+        if vnet_integration:
+            # Private cluster with VNet integration - private DNS zone IS required (same as traditional private cluster)
+            self.logger.warning("  API Server VNet Integration (private mode) - private DNS zone required")
 
         if private_dns_zone and private_dns_zone != "system":
             # Custom private DNS zone
             self.dns_analysis = {
                 "type": "custom",
                 "is_private_cluster": True,
+                "vnet_integration": vnet_integration,
                 "private_dns_zone": private_dns_zone,
                 "analysis": "Custom private DNS zone configured",
             }
@@ -166,11 +187,29 @@ class DNSAnalyzer(BaseAnalyzer):
             self.dns_analysis = {
                 "type": "system",
                 "is_private_cluster": True,
+                "vnet_integration": vnet_integration,
                 "private_dns_zone": "system",
                 "analysis": "System-managed private DNS zone",
             }
 
             self.logger.warning("  System-managed private DNS zone")
+
+    def _is_vnet_integration_enabled(self, api_server_profile: Dict[str, Any]) -> bool:
+        """
+        Check if API Server VNet Integration is enabled.
+
+        API Server VNet Integration projects the API server directly into a delegated subnet
+        without requiring a private endpoint or tunnel. For public VNet integration clusters,
+        no private DNS zone is needed since nodes connect directly via private IP.
+
+        Args:
+            api_server_profile: API server access profile dictionary
+
+        Returns:
+            True if VNet integration is enabled, False otherwise
+        """
+        additional_props = api_server_profile.get("additional_properties", {})
+        return additional_props.get("enableVnetIntegration", False)
 
     def _analyze_vnet_dns_servers(self) -> None:
         """Analyze VNet DNS server configuration"""
