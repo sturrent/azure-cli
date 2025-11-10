@@ -208,6 +208,9 @@ class DNSAnalyzer(BaseAnalyzer):
         Returns:
             True if VNet integration is enabled, False otherwise
         """
+        # Check both top-level and additional_properties for backward compatibility
+        if api_server_profile.get("enable_vnet_integration", False):
+            return True
         additional_props = api_server_profile.get("additional_properties", {})
         return additional_props.get("enableVnetIntegration", False)
 

@@ -724,8 +724,11 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         # Check for VNet integration
         vnet_integration = False
         if api_server_profile:
-            additional_props = api_server_profile.get("additional_properties", {})
-            vnet_integration = additional_props.get("enableVnetIntegration", False)
+            # Check both top-level and additional_properties for backward compatibility
+            vnet_integration = api_server_profile.get("enable_vnet_integration", False)
+            if not vnet_integration:
+                additional_props = api_server_profile.get("additional_properties", {})
+                vnet_integration = additional_props.get("enableVnetIntegration", False)
 
         # Determine access mode
         if vnet_integration:
