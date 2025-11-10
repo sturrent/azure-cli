@@ -945,6 +945,7 @@ def aks_create(
     crg_id=None,
     gpu_instance_profile=None,
     message_of_the_day=None,
+    workload_runtime=None,
     # azure service mesh
     enable_azure_service_mesh=None,
     revision=None,
@@ -1279,14 +1280,16 @@ def aks_upgrade(cmd,
         upgrade_all = True
     else:
         if not control_plane_only:
-            msg = ("Since control-plane-only argument is not specified, this will upgrade the control plane "
+            msg = ("Since --control-plane-only parameter is not specified, this will upgrade the control plane "
                    "AND all nodepools to version {}. Continue?").format(instance.kubernetes_version)
             if not yes and not prompt_y_n(msg, default="n"):
                 return None
             upgrade_all = True
         else:
-            msg = ("Since control-plane-only argument is specified, this will upgrade only the control plane to {}. "
-                   "Node pool will not change. Continue?").format(instance.kubernetes_version)
+            msg = ("Since --control-plane-only parameter is specified, this will upgrade only the kubernetes version of the control plane to {}. "
+                   "Kubernetes versions of the node pools will remain unchanged, "
+                   "but node image version may be upgraded if there has been cluster config change that requires VM reimage. "
+                   "Continue?").format(instance.kubernetes_version)
             if not yes and not prompt_y_n(msg, default="n"):
                 return None
 
@@ -2855,6 +2858,7 @@ def aks_agentpool_add(
     asg_ids=None,
     node_public_ip_tags=None,
     disable_windows_outbound_nat=False,
+    workload_runtime=None,
     # trusted launch
     enable_vtpm=False,
     enable_secure_boot=False,
@@ -2865,6 +2869,8 @@ def aks_agentpool_add(
     gpu_driver=None,
     # static egress gateway - gateway-mode pool
     gateway_prefix_size=None,
+    # local DNS
+    localdns_config=None,
 ):
     # DO NOT MOVE: get all the original parameters and save them as a dictionary
     raw_parameters = locals()
@@ -2925,6 +2931,8 @@ def aks_agentpool_update(
     # etag headers
     if_match=None,
     if_none_match=None,
+    # local DNS
+    localdns_config=None,
 ):
     # DO NOT MOVE: get all the original parameters and save them as a dictionary
     raw_parameters = locals()
@@ -3596,6 +3604,44 @@ def aks_mesh_disable_ingress_gateway(
         ingress_gateway_type=ingress_gateway_type)
 
 
+def aks_mesh_enable_egress_gateway(
+        cmd,
+        client,
+        resource_group_name,
+        name,
+        istio_egressgateway_name,
+        istio_egressgateway_namespace,
+        gateway_configuration_name,
+):
+    return _aks_mesh_update(
+        cmd,
+        client,
+        resource_group_name,
+        name,
+        enable_egress_gateway=True,
+        istio_egressgateway_name=istio_egressgateway_name,
+        istio_egressgateway_namespace=istio_egressgateway_namespace,
+        gateway_configuration_name=gateway_configuration_name)
+
+
+def aks_mesh_disable_egress_gateway(
+        cmd,
+        client,
+        resource_group_name,
+        name,
+        istio_egressgateway_name,
+        istio_egressgateway_namespace,
+):
+    return _aks_mesh_update(
+        cmd,
+        client,
+        resource_group_name,
+        name,
+        istio_egressgateway_name=istio_egressgateway_name,
+        istio_egressgateway_namespace=istio_egressgateway_namespace,
+        disable_egress_gateway=True)
+
+
 def aks_mesh_get_revisions(
         cmd,
         client,
@@ -3718,6 +3764,11 @@ def _aks_mesh_update(
         enable_ingress_gateway=None,
         disable_ingress_gateway=None,
         ingress_gateway_type=None,
+        enable_egress_gateway=None,
+        disable_egress_gateway=None,
+        istio_egressgateway_name=None,
+        istio_egressgateway_namespace=None,
+        gateway_configuration_name=None,
         revision=None,
         yes=False,
         mesh_upgrade_command=None,

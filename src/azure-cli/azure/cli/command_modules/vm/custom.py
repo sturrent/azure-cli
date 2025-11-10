@@ -5837,7 +5837,7 @@ def list_vmss_applications(cmd, vmss_name, resource_group_name):
 
 
 # region Restore point collection
-def restore_point_create(client,
+def restore_point_create(cmd,
                          resource_group_name,
                          restore_point_collection_name,
                          restore_point_name,
@@ -5851,15 +5851,20 @@ def restore_point_create(client,
                          data_disk_restore_point_encryption_set=None,
                          data_disk_restore_point_encryption_type=None,
                          no_wait=False):
-    parameters = {}
+    parameters = {
+        'restore_point_collection_name': restore_point_collection_name,
+        'restore_point_name': restore_point_name,
+        'resource_group': resource_group_name,
+        'no_wait': no_wait
+    }
     if exclude_disks is not None:
-        parameters['excludeDisks'] = []
+        parameters['exclude_disks'] = []
         for disk in exclude_disks:
-            parameters['excludeDisks'].append({'id': disk})
+            parameters['exclude_disks'].append({'id': disk})
     if source_restore_point is not None:
-        parameters['sourceRestorePoint'] = {'id': source_restore_point}
+        parameters['source_restore_point'] = {'id': source_restore_point}
     if consistency_mode is not None:
-        parameters['consistencyMode'] = consistency_mode
+        parameters['consistency_mode'] = consistency_mode
 
     storage_profile = {}
     # Local restore point
@@ -5869,7 +5874,7 @@ def restore_point_create(client,
             managed_disk = {
                 'id': source_os_resource
             }
-            os_disk['managedDisk'] = managed_disk
+            os_disk['managed_disk'] = managed_disk
             if os_restore_point_encryption_set is None and os_restore_point_encryption_type is None:
                 raise ArgumentUsageError('usage error: --os-restore-point-encryption-set or --os-restore-point-encryption-type must be used together with --source-os-resource')
 
@@ -5877,7 +5882,7 @@ def restore_point_create(client,
         if os_restore_point_encryption_set is not None or os_restore_point_encryption_type is not None:
             encryption = {}
             if os_restore_point_encryption_set is not None:
-                encryption['diskEncryptionSet'] = {
+                encryption['disk_encryption_set'] = {
                     'id': os_restore_point_encryption_set
                 }
             if os_restore_point_encryption_type is not None:
@@ -5887,10 +5892,10 @@ def restore_point_create(client,
                 disk_restore_point['encryption'] = encryption
 
         if disk_restore_point:
-            os_disk['diskRestorePoint'] = disk_restore_point
+            os_disk['disk_restore_point'] = disk_restore_point
 
         if os_disk:
-            storage_profile['osDisk'] = os_disk
+            storage_profile['os_disk'] = os_disk
 
         data_disks = []
         if source_data_disk_resource is not None:
@@ -5903,10 +5908,10 @@ def restore_point_create(client,
 
             for i, v in enumerate(source_data_disk_resource):
                 data_disks.append({
-                    'managedDisk': {
+                    'managed_disk': {
                         'id': v
                     },
-                    'diskRestorePoint': {
+                    'disk_restore_point': {
                         'encryption': {
                             'disk_encryption_set': {
                                 'id': data_disk_restore_point_encryption_set[i] if data_disk_restore_point_encryption_set is not None else None
@@ -5917,7 +5922,7 @@ def restore_point_create(client,
                 })
 
         if data_disks:
-            storage_profile['dataDisks'] = data_disks
+            storage_profile['data_disks'] = data_disks
 
     # Remote restore point
     if source_restore_point is not None:
@@ -5927,14 +5932,14 @@ def restore_point_create(client,
             source_disk_restore_point = {
                 'id': source_os_resource
             }
-            disk_restore_point['sourceDiskRestorePoint'] = source_disk_restore_point
+            disk_restore_point['source_disk_restore_point'] = source_disk_restore_point
             if os_restore_point_encryption_set is None and os_restore_point_encryption_type is None:
                 raise ArgumentUsageError('usage error: --os-restore-point-encryption-set or --os-restore-point-encryption-type must be used together with --source-os-resource')
 
         if os_restore_point_encryption_set is not None or os_restore_point_encryption_type is not None:
             encryption = {}
             if os_restore_point_encryption_set is not None:
-                encryption['diskEncryptionSet'] = {
+                encryption['disk_encryption_set'] = {
                     'id': os_restore_point_encryption_set
                 }
             if os_restore_point_encryption_type is not None:
@@ -5943,9 +5948,9 @@ def restore_point_create(client,
             if encryption:
                 disk_restore_point['encryption'] = encryption
         if disk_restore_point:
-            os_disk['diskRestorePoint'] = disk_restore_point
+            os_disk['disk_restore_point'] = disk_restore_point
         if os_disk:
-            storage_profile['osDisk'] = os_disk
+            storage_profile['os_disk'] = os_disk
 
         data_disks = []
         if source_data_disk_resource is not None:
@@ -5958,8 +5963,8 @@ def restore_point_create(client,
 
             for i, v in enumerate(source_data_disk_resource):
                 data_disks.append({
-                    'diskRestorePoint': {
-                        'sourceDiskRestorePoint': {
+                    'disk_restore_point': {
+                        'source_disk_restore_point': {
                             'id': v
                         },
                         'encryption': {
@@ -5971,30 +5976,33 @@ def restore_point_create(client,
                     }
                 })
         if data_disks:
-            storage_profile['dataDisks'] = data_disks
+            storage_profile['data_disks'] = data_disks
 
     if storage_profile:
-        parameters['sourceMetadata'] = {'storageProfile': storage_profile}
-    return sdk_no_wait(no_wait,
-                       client.begin_create,
-                       resource_group_name=resource_group_name,
-                       restore_point_collection_name=restore_point_collection_name,
-                       restore_point_name=restore_point_name,
-                       parameters=parameters)
+        parameters['source_metadata'] = {'storage_profile': storage_profile}
+
+    from .aaz.latest.restore_point import Create
+    return Create(cli_ctx=cmd.cli_ctx)(command_args=parameters)
 
 
-def restore_point_show(client,
+def restore_point_show(cmd,
                        resource_group_name,
                        restore_point_name,
                        restore_point_collection_name,
                        expand=None,
                        instance_view=None):
+    args = {
+        'resource_group': resource_group_name,
+        'restore_point_collection_name': restore_point_collection_name,
+        'restore_point_name': restore_point_name,
+        'expand': expand
+    }
+
     if instance_view is not None:
-        expand = 'instanceView'
-    return client.get(resource_group_name=resource_group_name,
-                      restore_point_name=restore_point_name,
-                      restore_point_collection_name=restore_point_collection_name,
-                      expand=expand)
+        args['expand'] = 'instanceView'
+
+    from .aaz.latest.restore_point import Show
+    return Show(cli_ctx=cmd.cli_ctx)(command_args=args)
 
 # endRegion
 
