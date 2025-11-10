@@ -253,8 +253,8 @@ class ClusterDataCollector:
                     if vnet.subnets:
                         for subnet in vnet.subnets:
                             addr_prefixes = (subnet.address_prefixes
-                                           if hasattr(subnet, 'address_prefixes')
-                                           else None)
+                                             if hasattr(subnet, 'address_prefixes')
+                                             else None)
                             vnets_map[vnet_name]["subnets"].append({
                                 "id": subnet.id,
                                 "name": subnet.name,

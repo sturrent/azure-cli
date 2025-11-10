@@ -896,41 +896,38 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                     if tests:
                         print("\n**Test Details:**")
                         for test in tests:
-                            status_icon = {
-                                "passed": "[OK]",
-                                "failed": "[ERROR]",
-                                "error": "[WARNING]",
-                                "skipped": "[SKIP]",
-                            }.get(test.get("status"), "[?]")
-
-                            test_name = test.get("test_name", "Unknown Test")
-                            vmss_name = test.get("vmss_name", "unknown")
-                            exit_code = test.get("exit_code", -1)
-                            print(
-                                f"- {status_icon} **{test_name}** "
-                                f"(VMSS: {vmss_name}, Exit Code: {exit_code})"
-                            )
-
-                            # Show full test result in JSON format with compacted
-                            # newlines
-                            test_copy = test.copy()
-                            # Compact stdout and stderr for single-line display
-                            if test_copy.get("stdout"):
-                                test_copy["stdout"] = test_copy["stdout"].replace(
-                                    "\n",
-                                    "\\n"
-                                )
-                            if test_copy.get("stderr"):
-                                test_copy["stderr"] = test_copy["stderr"].replace(
-                                    "\n",
-                                    "\\n"
-                                )
-
-                            print("  - **Full Test Result:**")
-                            print("    ```json")
-                            print(f"    {json.dumps(test_copy, indent=2)}")
-                            print("    ```")
+                            self._print_test_detail(test)
                 print()
+
+    def _print_test_detail(self, test: Dict[str, Any]):
+        """Print individual test detail"""
+        status_icon = {
+            "passed": "[OK]",
+            "failed": "[ERROR]",
+            "error": "[WARNING]",
+            "skipped": "[SKIP]",
+        }.get(test.get("status"), "[?]")
+
+        test_name = test.get("test_name", "Unknown Test")
+        vmss_name = test.get("vmss_name", "unknown")
+        exit_code = test.get("exit_code", -1)
+        print(
+            f"- {status_icon} **{test_name}** "
+            f"(VMSS: {vmss_name}, Exit Code: {exit_code})"
+        )
+
+        # Show full test result in JSON format with compacted newlines
+        test_copy = test.copy()
+        # Compact stdout and stderr for single-line display
+        if test_copy.get("stdout"):
+            test_copy["stdout"] = test_copy["stdout"].replace("\n", "\\n")
+        if test_copy.get("stderr"):
+            test_copy["stderr"] = test_copy["stderr"].replace("\n", "\\n")
+
+        print("  - **Full Test Result:**")
+        print("    ```json")
+        print(f"    {json.dumps(test_copy, indent=2)}")
+        print("    ```")
 
     def _print_nsg_analysis(self):
         """Print NSG analysis section"""
