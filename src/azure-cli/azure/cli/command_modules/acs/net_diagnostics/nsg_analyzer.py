@@ -5,7 +5,7 @@ This module analyzes Network Security Groups (NSGs) associated with AKS clusters
 checking for misconfigurations, blocking rules, and compliance with AKS requirements.
 """
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 
@@ -65,6 +65,9 @@ class NSGAnalyzer(BaseAnalyzer):
 
         # Check inter-node communication
         self._analyze_inter_node_communication()
+
+        # Check Azure CNI Overlay pod CIDR rules (if applicable)
+        self._check_overlay_pod_cidr_rules()
 
         # Check for blocking rules
         self._analyze_nsg_compliance()
@@ -152,9 +155,10 @@ class NSGAnalyzer(BaseAnalyzer):
         return rules
 
     def _analyze_subnet_nsgs(self) -> None:
-        """Analyze NSGs associated with node subnets."""
+        """Analyze NSGs associated with node and pod subnets."""
         processed_subnets: Set[str] = set()
 
+        # 1. Analyze node subnets from VMSS configuration
         for vmss in self.vmss_info:
             vm_profile = vmss.get("virtual_machine_profile", {})
             network_profile = vm_profile.get("network_profile", {})
@@ -170,10 +174,30 @@ class NSGAnalyzer(BaseAnalyzer):
                         continue
 
                     processed_subnets.add(subnet_id)
-                    self._process_subnet_nsg(subnet_id)
+                    self._process_subnet_nsg(subnet_id, subnet_type="node")
 
-    def _process_subnet_nsg(self, subnet_id: str) -> None:
-        """Process NSG for a single subnet."""
+        # 2. Analyze pod subnets from agent pool configuration (Azure CNI Pod Subnet mode)
+        agent_pools = self.cluster_info.get("agent_pool_profiles", [])
+        if not agent_pools:
+            # Try alternative field name
+            agent_pools = self.cluster_info.get("agentPoolProfiles", [])
+
+        for pool in agent_pools:
+            pod_subnet_id = pool.get("pod_subnet_id") or pool.get("podSubnetId")
+            if pod_subnet_id and pod_subnet_id not in processed_subnets:
+                processed_subnets.add(pod_subnet_id)
+                pool_name = pool.get("name", "unknown")
+                self.logger.info("  Analyzing pod subnet NSG for pool '%s'", pool_name)
+                self._process_subnet_nsg(pod_subnet_id, subnet_type="pod")
+
+    def _process_subnet_nsg(self, subnet_id: str, subnet_type: str = "node") -> None:
+        """
+        Process NSG for a single subnet.
+
+        Args:
+            subnet_id: Azure resource ID of the subnet
+            subnet_type: Type of subnet ('node' or 'pod')
+        """
         try:
             # Parse subnet ID to get components
             parsed = self._parse_resource_id(subnet_id)
@@ -204,6 +228,7 @@ class NSGAnalyzer(BaseAnalyzer):
                         {
                             "subnet_id": subnet_id,
                             "subnet_name": subnet_info.name,
+                            "subnet_type": subnet_type,  # Track whether this is node or pod subnet
                             "nsg_id": nsg_id,
                             "nsg_name": nsg_name,
                             "rules": nsg_dict.get("security_rules", []),
@@ -211,9 +236,18 @@ class NSGAnalyzer(BaseAnalyzer):
                         }
                     )
 
-                    self.logger.info("  Found NSG on subnet %s: %s", subnet_info.name, nsg_name)
+                    self.logger.info(
+                        "  Found NSG on %s subnet %s: %s",
+                        subnet_type,
+                        subnet_info.name,
+                        nsg_name
+                    )
             else:
-                self.logger.info("  No NSG found on subnet %s", subnet_info.name)
+                self.logger.info(
+                    "  No NSG found on %s subnet %s",
+                    subnet_type,
+                    subnet_info.name
+                )
 
         except (ResourceNotFoundError, HttpResponseError) as e:
             self.logger.error("  Failed to analyze subnet %s: %s", subnet_id, e)
@@ -319,6 +353,265 @@ class NSGAnalyzer(BaseAnalyzer):
                         blocking_rules=issue["blocking_rules"],
                     )
                 )
+
+    def _check_overlay_pod_cidr_rules(self) -> None:
+        """
+        Check NSG rules for Azure CNI Overlay pod CIDR traffic.
+
+        Azure CNI Overlay has no encapsulation, so NSG rules must allow:
+        - Node CIDR to Pod CIDR (for service routing)
+        - Pod CIDR to Pod CIDR (for pod-to-pod communication, DNS)
+
+        Reference: https://learn.microsoft.com/en-us/azure/aks/azure-cni-overlay#network-security-groups
+        """
+        # Check if this is Azure CNI Overlay mode
+        network_profile = self.cluster_info.get("network_profile", {})
+        network_plugin = network_profile.get("network_plugin")
+        network_plugin_mode = network_profile.get("network_plugin_mode")
+        pod_cidr = network_profile.get("pod_cidr")
+
+        # Only check for Azure CNI in overlay mode
+        if network_plugin != "azure" or network_plugin_mode != "overlay":
+            self.logger.debug(
+                "Skipping overlay pod CIDR checks - not Azure CNI Overlay mode "
+                "(plugin=%s, mode=%s)",
+                network_plugin,
+                network_plugin_mode
+            )
+            return
+
+        if not pod_cidr:
+            self.logger.warning(
+                "Azure CNI Overlay detected but pod CIDR not found in network profile"
+            )
+            return
+
+        self.logger.info("Checking NSG rules for Azure CNI Overlay pod CIDR: %s", pod_cidr)
+
+        # Get node CIDR from VNet subnets
+        node_cidr = self._get_node_cidr()
+        if not node_cidr:
+            self.logger.warning("Could not determine node CIDR for overlay validation")
+            return
+
+        # Check all NSGs
+        all_nsgs = self.nsg_analysis["subnet_nsgs"] + self.nsg_analysis["nic_nsgs"]
+        blocking_issues = []
+
+        for nsg in all_nsgs:
+            nsg_name = nsg.get("nsg_name", "unknown")
+            all_rules = nsg.get("rules", []) + nsg.get("default_rules", [])
+
+            # Check for rules blocking Node → Pod CIDR
+            node_to_pod_blocked = self._check_cidr_traffic_blocked(
+                all_rules, node_cidr, pod_cidr, "Node-to-Pod"
+            )
+
+            # Check for rules blocking Pod → Pod CIDR
+            pod_to_pod_blocked = self._check_cidr_traffic_blocked(
+                all_rules, pod_cidr, pod_cidr, "Pod-to-Pod"
+            )
+
+            if node_to_pod_blocked or pod_to_pod_blocked:
+                blocking_issues.append({
+                    "nsg_name": nsg_name,
+                    "node_to_pod_blocked": node_to_pod_blocked,
+                    "pod_to_pod_blocked": pod_to_pod_blocked,
+                    "node_cidr": node_cidr,
+                    "pod_cidr": pod_cidr
+                })
+
+        # Create findings for any blocking issues
+        if blocking_issues:
+            for issue in blocking_issues:
+                blocked_types = []
+                if issue["node_to_pod_blocked"]:
+                    blocked_types.append("Node→Pod")
+                if issue["pod_to_pod_blocked"]:
+                    blocked_types.append("Pod→Pod")
+
+                traffic_types = " and ".join(blocked_types)
+                severity = FindingCode.NSG_POD_CIDR_BLOCKED
+                message = (
+                    f"NSG '{issue['nsg_name']}' may block Azure CNI Overlay pod traffic ({traffic_types})"
+                )
+                recommendation = (
+                    f"Azure CNI Overlay requires NSG rules to allow:\n"
+                    f"  - Node CIDR ({issue['node_cidr']}) → Pod CIDR ({issue['pod_cidr']}) for service routing\n"
+                    f"  - Pod CIDR ({issue['pod_cidr']}) → Pod CIDR ({issue['pod_cidr']}) for pod-to-pod, DNS\n"
+                    f"Review and add NSG rules to allow this traffic. "
+                    f"See: https://learn.microsoft.com/en-us/azure/aks/azure-cni-overlay#network-security-groups"
+                )
+
+                self.add_finding(
+                    Finding.create_warning(
+                        severity,
+                        message=message,
+                        recommendation=recommendation,
+                        nsg_name=issue["nsg_name"],
+                        node_cidr=issue["node_cidr"],
+                        pod_cidr=issue["pod_cidr"],
+                        blocked_traffic=traffic_types
+                    )
+                )
+
+    def _get_node_cidr(self) -> Optional[str]:
+        """Get node CIDR from cluster agent pool subnet configuration."""
+        # Try to get from VMSS info first
+        if self.vmss_info:
+            for vmss in self.vmss_info:
+                subnets = vmss.get("subnets", [])
+                if subnets and len(subnets) > 0:
+                    # Return the first subnet's address prefix
+                    address_prefix = subnets[0].get("address_prefix")
+                    if address_prefix:
+                        self.logger.debug("Found node CIDR from VMSS: %s", address_prefix)
+                        return address_prefix
+
+        # Fallback: get subnet ID from agent pools and query it
+        agent_pools = self.cluster_info.get("agent_pool_profiles", [])
+        if not agent_pools:
+            # Try alternative field name
+            agent_pools = self.cluster_info.get("agentPoolProfiles", [])
+
+        for pool in agent_pools:
+            subnet_id = pool.get("vnet_subnet_id") or pool.get("vnetSubnetId")
+            if subnet_id and subnet_id != "null" and self.network_client:
+                try:
+                    # Parse subnet ID to get resource info
+                    # Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
+                    # Microsoft.Network/virtualNetworks/{vnet}/subnets/{subnet}
+                    parts = subnet_id.split("/")
+                    if len(parts) >= 11:
+                        resource_group = parts[4]
+                        vnet_name = parts[8]
+                        subnet_name = parts[10]
+
+                        # Query the subnet
+                        subnet = self.network_client.subnets.get(
+                            resource_group,
+                            vnet_name,
+                            subnet_name
+                        )
+
+                        if subnet and hasattr(subnet, 'address_prefix'):
+                            address_prefix = subnet.address_prefix
+                            self.logger.debug(
+                                "Found node CIDR from agent pool subnet: %s",
+                                address_prefix
+                            )
+                            return address_prefix
+
+                except Exception as e:  # pylint: disable=broad-except
+                    self.logger.debug("Failed to query subnet %s: %s", subnet_id, e)
+                    continue
+
+        self.logger.debug("Could not determine node CIDR from any source")
+        return None
+
+    def _check_cidr_traffic_blocked(
+        self,
+        rules: List[Dict[str, Any]],
+        source_cidr: str,
+        dest_cidr: str,
+        traffic_type: str
+    ) -> bool:
+        """
+        Check if NSG rules block traffic between two CIDR ranges.
+
+        Args:
+            rules: List of NSG rules
+            source_cidr: Source CIDR range
+            dest_cidr: Destination CIDR range
+            traffic_type: Description of traffic type (for logging)
+
+        Returns:
+            True if traffic appears to be blocked
+        """
+        # Sort rules by priority
+        sorted_rules = sorted(rules, key=lambda x: x.get("priority", 65000))
+
+        for rule in sorted_rules:
+            if rule.get("access", "").lower() == "deny":
+                # Check if this deny rule matches our traffic
+                source_match = self._cidr_matches_rule_prefix(
+                    source_cidr, rule.get("source_address_prefix", "")
+                )
+                dest_match = self._cidr_matches_rule_prefix(
+                    dest_cidr, rule.get("destination_address_prefix", "")
+                )
+
+                if source_match and dest_match:
+                    self.logger.info(
+                        "  Found deny rule blocking %s traffic: %s (priority %s)",
+                        traffic_type,
+                        rule.get("name"),
+                        rule.get("priority")
+                    )
+                    return True
+
+            elif rule.get("access", "").lower() == "allow":
+                # Allow rule matched, traffic is permitted
+                source_match = self._cidr_matches_rule_prefix(
+                    source_cidr, rule.get("source_address_prefix", "")
+                )
+                dest_match = self._cidr_matches_rule_prefix(
+                    dest_cidr, rule.get("destination_address_prefix", "")
+                )
+
+                if source_match and dest_match:
+                    self.logger.debug(
+                        "  Found allow rule permitting %s traffic: %s",
+                        traffic_type,
+                        rule.get("name")
+                    )
+                    return False
+
+        # No explicit allow or deny found - check default rules
+        # Default VirtualNetwork rules typically allow intra-VNet traffic
+        return False
+
+    def _cidr_matches_rule_prefix(self, cidr: str, rule_prefix: str) -> bool:
+        """
+        Check if a CIDR range matches an NSG rule address prefix.
+
+        Args:
+            cidr: CIDR range to check (e.g., "10.244.0.0/16")
+            rule_prefix: NSG rule address prefix (e.g., "*", "VirtualNetwork", "10.0.0.0/8")
+
+        Returns:
+            True if the CIDR could match the rule prefix
+        """
+        if not rule_prefix or not cidr:
+            return False
+
+        # Wildcard matches everything
+        if rule_prefix == "*":
+            return True
+
+        # VirtualNetwork service tag matches private IP ranges
+        if rule_prefix == "VirtualNetwork":
+            return self._is_private_ip_range(cidr)
+
+        # Exact match
+        if cidr == rule_prefix:
+            return True
+
+        # Check if CIDR is within rule prefix range (simplified check)
+        # For proper implementation, would need IP address library
+        # For now, check if they share the same network prefix
+        cidr_network = cidr.split("/")[0].split(".")[0]
+        rule_network = rule_prefix.split("/")[0].split(".")[0]
+
+        return cidr_network == rule_network
+
+    def _is_private_ip_range(self, cidr: str) -> bool:
+        """Check if CIDR is in private IP range."""
+        if not cidr:
+            return False
+
+        first_octet = cidr.split(".")[0]
+        return first_octet in ["10", "172", "192"]
 
     def _is_vnet_source(self, source: str) -> bool:
         """Check if source is VirtualNetwork or private IP range."""

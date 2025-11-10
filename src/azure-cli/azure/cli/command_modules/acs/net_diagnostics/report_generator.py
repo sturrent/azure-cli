@@ -24,6 +24,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         subscription: str,
         *,
         cluster_info: Dict[str, Any],
+        agent_pools: List[Dict[str, Any]],
         findings: List[Dict[str, Any]],
         vnets_analysis: List[Dict[str, Any]],
         route_table_analysis: Dict[str, Any],
@@ -36,6 +37,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         api_probe_results: Optional[Dict[str, Any]] = None,
         failure_analysis: Optional[Dict[str, Any]] = None,
         script_version: str = "2.2.0",
+        subnet_cidrs: Optional[Dict[str, str]] = None,
         logger: Optional[logging.Logger] = None,
     ):
         """
@@ -46,6 +48,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             resource_group: Resource group name
             subscription: Azure subscription ID
             cluster_info: Cluster configuration dictionary
+            agent_pools: List of agent pool configurations
             findings: List of diagnostic findings
             vnets_analysis: VNet analysis results
             route_table_analysis: Route table/UDR analysis results
@@ -58,12 +61,14 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             api_probe_results: API connectivity probe results
             failure_analysis: Failure analysis results
             script_version: Script version number
+            subnet_cidrs: Optional dict mapping subnet IDs to CIDRs
             logger: Optional logger instance
         """
         self.cluster_name = cluster_name
         self.resource_group = resource_group
         self.subscription = subscription
         self.cluster_info = cluster_info
+        self.agent_pools = agent_pools
         self.findings = findings
         self.vnets_analysis = vnets_analysis
         self.route_table_analysis = route_table_analysis
@@ -76,7 +81,9 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         self.api_probe_results = api_probe_results
         self.failure_analysis = failure_analysis or {"enabled": False}
         self.script_version = script_version
+        self.subnet_cidrs = subnet_cidrs or {}
         self.logger = logger or logging.getLogger(__name__)
+        self.show_details = False  # Set in print_console_report
 
     def generate_json_report(self) -> Dict[str, Any]:
         """
@@ -214,10 +221,10 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
 
         print("**Configuration:**")
         network_profile = self.cluster_info.get("network_profile", {})
-        print(
-            f"- Network Plugin: "
-            f"{network_profile.get('network_plugin', 'kubenet')}"
-        )
+
+        # Display network plugin with mode details
+        self._print_network_plugin_info(network_profile)
+
         print(
             f"- Outbound Type: "
             f"{network_profile.get('outbound_type', 'loadBalancer')}"
@@ -230,6 +237,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         )
         print(f"- Private Cluster: {str(is_private).lower()}")
 
+        self._print_node_pools(show_details=show_details)
         self._print_outbound_configuration()
         self._print_connectivity_tests()
 
@@ -305,6 +313,135 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         if json_report_path:
             print(f"[DOC] JSON report saved to: {json_report_path}")
         print("Tip: Use --details flag for detailed analysis")
+
+    def _get_cni_mode_description(self, network_profile: Dict[str, Any]) -> str:
+        """
+        Get user-friendly CNI mode description.
+
+        This method determines the CNI mode based on network profile settings
+        and returns a human-readable description.
+
+        Args:
+            network_profile: Network profile dictionary from cluster info
+
+        Returns:
+            String describing the CNI mode (e.g., "Azure CNI Overlay", "Kubenet")
+        """
+        network_plugin = network_profile.get("network_plugin", "kubenet")
+        network_plugin_mode = network_profile.get("network_plugin_mode")
+        network_dataplane = network_profile.get("network_dataplane", "azure")
+
+        # Build the CNI mode description
+        cni_description = network_plugin
+
+        if network_plugin == "azure":
+            if network_plugin_mode == "overlay":
+                cni_description = "Azure CNI Overlay"
+            elif network_dataplane == "cilium":
+                # Azure CNI with Cilium dataplane
+                if network_plugin_mode == "overlay":
+                    cni_description = "Azure CNI Overlay + Cilium"
+                else:
+                    cni_description = "Azure CNI + Cilium"
+            elif any(pool.get("pod_subnet_id") for pool in self.agent_pools):
+                # Azure CNI with pod subnets
+                cni_description = "Azure CNI (Pod Subnet)"
+            else:
+                # Legacy Azure CNI (node subnet only)
+                cni_description = "Azure CNI (Node Subnet)"
+        elif network_plugin == "kubenet":
+            cni_description = "Kubenet"
+        elif network_plugin == "none":
+            cni_description = "BYO CNI (Bring Your Own CNI)"
+
+        return cni_description
+
+    def _print_network_plugin_info(self, network_profile: Dict[str, Any]):
+        """
+        Print detailed network plugin configuration information.
+
+        This displays the CNI mode, dataplane, and policy to help users understand
+        their AKS networking setup.
+
+        Args:
+            network_profile: Network profile dictionary from cluster info
+        """
+        network_policy = network_profile.get("network_policy", "none")
+        network_dataplane = network_profile.get("network_dataplane", "azure")
+        pod_cidr = network_profile.get("pod_cidr")
+
+        # Get CNI mode description using shared helper
+        cni_description = self._get_cni_mode_description(network_profile)
+
+        print(f"- Network Plugin: {cni_description}")
+
+        # Show pod CIDR if available (for overlay and kubenet)
+        if pod_cidr:
+            print(f"  - Pod CIDR: {pod_cidr}")
+
+        # Show network policy if configured
+        if network_policy and network_policy != "none":
+            print(f"  - Network Policy: {network_policy}")
+
+        # Show dataplane if not default Azure
+        if network_dataplane and network_dataplane != "azure":
+            print(f"  - Network Dataplane: {network_dataplane}")
+
+    def _print_node_pools(self, show_details: bool = False):
+        """Print node pool information section
+
+        Args:
+            show_details: If True, show full details. If False, show compact summary.
+        """
+        if not self.agent_pools or len(self.agent_pools) == 0:
+            return
+
+        # Always show node pools for better visibility
+        print()
+        print("**Node Pools:**")
+
+        for pool in self.agent_pools:
+            name = pool.get("name", "unknown")
+            mode = pool.get("mode", "User")
+            count = pool.get("count", 0)
+
+            # Get subnet info with CIDR
+            vnet_subnet_id = pool.get("vnet_subnet_id")
+            if vnet_subnet_id and "/" in vnet_subnet_id:
+                subnet_name = vnet_subnet_id.split("/")[-1]
+            else:
+                subnet_name = vnet_subnet_id or "N/A"
+
+            # Look up CIDR if available
+            subnet_display = subnet_name
+            if vnet_subnet_id and self.subnet_cidrs:
+                cidr = self.subnet_cidrs.get(vnet_subnet_id.lower())
+                if cidr:
+                    subnet_display = f"{subnet_name} ({cidr})"
+
+            if show_details:
+                # Detailed view: show all information with indentation
+                vm_size = pool.get("vm_size", "unknown")
+                os_type = pool.get("os_type", "Linux")
+
+                print(f"- {name} ({mode}, {os_type})")
+                print(f"  - VM Size: {vm_size}, Count: {count}")
+                print(f"  - Node Subnet: {subnet_display}")
+
+                # Show pod subnet for Azure CNI Pod Subnet mode
+                pod_subnet_id = pool.get("pod_subnet_id")
+                if pod_subnet_id:
+                    pod_subnet_name = pod_subnet_id.split("/")[-1] if "/" in pod_subnet_id else pod_subnet_id
+                    # Look up pod subnet CIDR
+                    pod_subnet_display = pod_subnet_name
+                    if self.subnet_cidrs:
+                        pod_cidr = self.subnet_cidrs.get(pod_subnet_id.lower())
+                        if pod_cidr:
+                            pod_subnet_display = f"{pod_subnet_name} ({pod_cidr})"
+                    print(f"  - Pod Subnet: {pod_subnet_display}")
+            else:
+                # Compact summary view: single line per pool
+                print(f"- {name} ({mode}, Count: {count}, Subnet: {subnet_display})")
 
     def _print_outbound_configuration(self):
         """Print outbound IP configuration section"""
@@ -457,11 +594,11 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
 
         print(f"| Location | {self.cluster_info.get('location', '')} |")
 
+        # Get network plugin description using shared helper
         network_profile = self.cluster_info.get("network_profile", {})
-        print(
-            f"| Network Plugin | "
-            f"{network_profile.get('network_plugin', 'kubenet')} |"
-        )
+        cni_description = self._get_cni_mode_description(network_profile)
+
+        print(f"| Network Plugin | {cni_description} |")
         print(
             f"| Outbound Type | "
             f"{network_profile.get('outbound_type', 'loadBalancer')} |"
@@ -488,8 +625,73 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             f"- **DNS Service IP:** "
             f"{network_profile.get('dns_service_ip', '')}"
         )
-        print(f"- **Pod CIDR:** {network_profile.get('pod_cidr', '')}")
+
+        # Handle Pod CIDR display based on CNI mode
+        pod_cidr = network_profile.get('pod_cidr', '')
+        has_pod_subnets = any(pool.get("pod_subnet_id") for pool in self.agent_pools)
+
+        if has_pod_subnets:
+            # Pod subnet mode - no cluster-wide pod CIDR
+            print("- **Pod CIDR:** N/A (using pod subnets)")
+        elif pod_cidr:
+            # Overlay or Kubenet with pod CIDR
+            print(f"- **Pod CIDR:** {pod_cidr}")
+        else:
+            # Legacy Azure CNI or other modes
+            print("- **Pod CIDR:** N/A (node subnet mode)")
+
+        # Show network policy if configured
+        network_policy = network_profile.get('network_policy', 'none')
+        if network_policy and network_policy != 'none':
+            print(f"- **Network Policy:** {network_policy}")
+
+        # Show network dataplane if not default
+        network_dataplane = network_profile.get('network_dataplane', 'azure')
+        if network_dataplane and network_dataplane != 'azure':
+            print(f"- **Network Dataplane:** {network_dataplane}")
+
         print()
+
+        # Node Pools - always show in detailed mode for visibility
+        if self.agent_pools:
+            print("### Node Pools")
+            print()
+            for pool in self.agent_pools:
+                name = pool.get("name", "unknown")
+                mode = pool.get("mode", "User")
+                count = pool.get("count", 0)
+                vm_size = pool.get("vm_size", "unknown")
+                os_type = pool.get("os_type", "Linux")
+
+                print(f"**{name}** ({mode}, {os_type})")
+                print(f"- VM Size: {vm_size}")
+                print(f"- Count: {count}")
+
+                # Show node subnet with CIDR if available
+                vnet_subnet_id = pool.get("vnet_subnet_id")
+                if vnet_subnet_id:
+                    subnet_name = vnet_subnet_id.split("/")[-1] if "/" in vnet_subnet_id else vnet_subnet_id
+                    # Look up CIDR
+                    subnet_display = subnet_name
+                    if self.subnet_cidrs:
+                        cidr = self.subnet_cidrs.get(vnet_subnet_id.lower())
+                        if cidr:
+                            subnet_display = f"{subnet_name} ({cidr})"
+                    print(f"- Node Subnet: {subnet_display}")
+
+                # Show pod subnet with CIDR if available
+                pod_subnet_id = pool.get("pod_subnet_id")
+                if pod_subnet_id:
+                    subnet_name = pod_subnet_id.split("/")[-1] if "/" in pod_subnet_id else pod_subnet_id
+                    # Look up CIDR
+                    subnet_display = subnet_name
+                    if self.subnet_cidrs:
+                        cidr = self.subnet_cidrs.get(pod_subnet_id.lower())
+                        if cidr:
+                            subnet_display = f"{subnet_name} ({cidr})"
+                    print(f"- Pod Subnet: {subnet_display}")
+
+                print()
 
         # API Server access
         self._print_api_server_access()

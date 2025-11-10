@@ -249,6 +249,19 @@ class ClusterDataCollector:
                         "peerings": [],
                     }
 
+                    # Collect subnet details with CIDR information
+                    if vnet.subnets:
+                        for subnet in vnet.subnets:
+                            addr_prefixes = (subnet.address_prefixes
+                                           if hasattr(subnet, 'address_prefixes')
+                                           else None)
+                            vnets_map[vnet_name]["subnets"].append({
+                                "id": subnet.id,
+                                "name": subnet.name,
+                                "address_prefix": subnet.address_prefix,
+                                "address_prefixes": addr_prefixes,
+                            })
+
                     # Get VNet peerings
                     peerings_list = list(
                         self.network_client.virtual_network_peerings.list(vnet_rg, vnet_name)

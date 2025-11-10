@@ -39,6 +39,30 @@ from azure.cli.command_modules.acs.net_diagnostics.route_table_analyzer import (
 )
 
 
+def _build_subnet_cidr_lookup(vnets_analysis: List[Dict[str, Any]]) -> Dict[str, str]:
+    """
+    Build subnet ID to CIDR lookup dictionary from VNet analysis results.
+
+    Args:
+        vnets_analysis: List of VNet analysis results containing subnet information
+
+    Returns:
+        Dictionary mapping lowercase subnet IDs to their CIDR ranges
+    """
+    subnet_cidrs = {}
+    for vnet in vnets_analysis:
+        for subnet in vnet.get('subnets', []):
+            subnet_id = subnet.get('id', '').lower()
+            # Use address_prefix (single) or first from address_prefixes (multiple)
+            cidr = subnet.get('address_prefix') or (
+                subnet.get('address_prefixes', [None])[0]
+                if subnet.get('address_prefixes') else None
+            )
+            if subnet_id and cidr:
+                subnet_cidrs[subnet_id] = cidr
+    return subnet_cidrs
+
+
 def run_diagnostics(  # pylint: disable=too-many-locals
     aks_client,
     agent_pools_client,
@@ -370,11 +394,17 @@ def run_diagnostics(  # pylint: disable=too-many-locals
 
     # Phase 10: Generate report
     logger.info("Generating diagnostic report...")
+
+    # Build subnet CIDR lookup dict from vnets_analysis
+    subnet_cidrs = _build_subnet_cidr_lookup(vnets_analysis)
+    logger.debug("Built subnet CIDR lookup with %d entries", len(subnet_cidrs))
+
     report_generator = ReportGenerator(
         cluster_name=cluster_name,
         resource_group=resource_group_name,
         subscription=subscription_id,
         cluster_info=cluster_info,
+        agent_pools=agent_pools,
         findings=findings,
         vnets_analysis=vnets_analysis,
         route_table_analysis=route_table_analysis,
@@ -387,6 +417,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         api_probe_results=api_probe_results,
         failure_analysis={"enabled": False},
         script_version=__version__,
+        subnet_cidrs=subnet_cidrs,
         logger=logger
     )
 
