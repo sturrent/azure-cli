@@ -712,6 +712,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         # UDR Analysis
         self._print_udr_analysis()
 
+    # pylint: disable=too-many-branches
     def _print_api_server_access(self):
         """Print API server access section"""
         print("### API Server Access")
@@ -753,19 +754,19 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 private_fqdn = self.cluster_info.get("private_fqdn", "")
 
             print(f"- **Private FQDN:** {private_fqdn}")
-            
+
             # Check if public FQDN is also enabled (default for private clusters)
             public_fqdn_enabled = api_server_profile.get("enable_private_cluster_public_fqdn")
             if public_fqdn_enabled is None:
                 # Check alternative property name
                 public_fqdn_enabled = api_server_profile.get("enablePrivateClusterPublicFqdn", True)
-            
+
             if public_fqdn_enabled:
                 public_fqdn = self.cluster_info.get('fqdn', '')
                 print(f"- **Public FQDN:** {public_fqdn} (enabled for private cluster)")
             else:
                 print("- **Public FQDN:** Disabled (private-only access)")
-            
+
             print(
                 f"- **Private DNS Zone:** "
                 f"{api_server_profile.get('private_dns_zone', '')}"

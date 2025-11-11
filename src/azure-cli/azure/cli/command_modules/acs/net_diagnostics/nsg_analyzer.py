@@ -740,7 +740,10 @@ class NSGAnalyzer(BaseAnalyzer):
                             "priority": rule.get("priority", 0),
                             "issue": "Blocks outbound HTTPS (port 443) from API server subnet",
                             "impact": "May prevent nodes from communicating with API server",
-                            "recommendation": "Ensure outbound TCP 443 is allowed from cluster subnet to API server subnet",
+                            "recommendation": (
+                                "Ensure outbound TCP 443 is allowed from cluster "
+                                "subnet to API server subnet"
+                            ),
                         })
 
                 # Check if blocks port 10250 inbound (API-to-node for kubectl exec/logs)
@@ -751,7 +754,10 @@ class NSGAnalyzer(BaseAnalyzer):
                             "priority": rule.get("priority", 0),
                             "issue": "Blocks inbound TCP 10250 to cluster nodes",
                             "impact": "kubectl exec, kubectl logs, and run command functionality will fail",
-                            "recommendation": "Ensure inbound TCP 10250 is allowed from API server subnet to cluster subnet",
+                            "recommendation": (
+                                "Ensure inbound TCP 10250 is allowed from API server "
+                                "subnet to cluster subnet"
+                            ),
                         })
 
         # Add findings for blocking rules
