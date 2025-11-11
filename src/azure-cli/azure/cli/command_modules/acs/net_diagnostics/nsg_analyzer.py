@@ -60,6 +60,9 @@ class NSGAnalyzer(BaseAnalyzer):
         # Analyze NSGs on subnets
         self._analyze_subnet_nsgs()
 
+        # Analyze API server subnet NSG (for VNet integration)
+        self._analyze_api_server_subnet_nsg()
+
         # Analyze NSGs on NICs
         self._analyze_nic_nsgs()
 
@@ -80,6 +83,25 @@ class NSGAnalyzer(BaseAnalyzer):
         if api_server_profile:
             return api_server_profile.get("enable_private_cluster", False)
         return False
+
+    def _is_vnet_integration_enabled(self) -> bool:
+        """Check if API Server VNet Integration is enabled."""
+        api_server_profile = self.cluster_info.get("api_server_access_profile")
+        if not api_server_profile:
+            return False
+
+        # Check both top-level and additional_properties for backward compatibility
+        if api_server_profile.get("enable_vnet_integration", False):
+            return True
+        additional_props = api_server_profile.get("additional_properties", {})
+        return additional_props.get("enableVnetIntegration", False)
+
+    def _get_api_server_subnet_id(self) -> Optional[str]:
+        """Get the API server subnet ID for VNet integration clusters."""
+        api_server_profile = self.cluster_info.get("api_server_access_profile")
+        if not api_server_profile:
+            return None
+        return api_server_profile.get("subnet_id")
 
     def _get_required_aks_rules(self, is_private_cluster: bool) -> Dict[str, List[Dict[str, str]]]:
         """
@@ -253,6 +275,70 @@ class NSGAnalyzer(BaseAnalyzer):
             self.logger.error("  Failed to analyze subnet %s: %s", subnet_id, e)
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("  Error parsing subnet ID %s: %s", subnet_id, e)
+
+    def _analyze_api_server_subnet_nsg(self) -> None:
+        """Analyze NSG on API server subnet for VNet integration clusters."""
+        if not self._is_vnet_integration_enabled():
+            self.logger.debug("  VNet integration not enabled, skipping API server subnet NSG analysis")
+            return
+
+        api_server_subnet_id = self._get_api_server_subnet_id()
+        if not api_server_subnet_id:
+            self.logger.warning("  VNet integration enabled but no API server subnet ID found")
+            return
+
+        self.logger.info("  Analyzing API server subnet NSG for VNet integration")
+
+        try:
+            # Parse subnet ID to get components
+            parsed = self._parse_resource_id(api_server_subnet_id)
+            subnet_rg = parsed["resource_group"]
+            vnet_name = parsed["parent_name"]
+            subnet_name = parsed["resource_name"]
+
+            # Get subnet info
+            subnet_info = self.network_client.subnets.get(subnet_rg, vnet_name, subnet_name)
+
+            nsg_info = subnet_info.network_security_group
+            if nsg_info:
+                nsg_id = nsg_info.id
+                nsg_name = nsg_id.split("/")[-1] if nsg_id else "unknown"
+
+                # Parse NSG ID to get resource group
+                nsg_parsed = self._parse_resource_id(nsg_id)
+                nsg_rg = nsg_parsed["resource_group"]
+
+                # Get NSG details
+                nsg_details = self.network_client.network_security_groups.get(nsg_rg, nsg_name)
+
+                if nsg_details:
+                    # Convert to dictionary
+                    nsg_dict = self._to_dict(nsg_details)
+
+                    # Add to subnet NSGs with special type
+                    self.nsg_analysis["subnet_nsgs"].append(
+                        {
+                            "subnet_id": api_server_subnet_id,
+                            "subnet_name": subnet_info.name,
+                            "subnet_type": "api_server",  # Special type for API server subnet
+                            "nsg_id": nsg_id,
+                            "nsg_name": nsg_name,
+                            "rules": nsg_dict.get("security_rules", []),
+                            "default_rules": nsg_dict.get("default_security_rules", []),
+                        }
+                    )
+
+                    self.logger.info("  Found NSG on API server subnet %s: %s", subnet_info.name, nsg_name)
+
+                    # Check for critical VNet integration rules
+                    self._check_vnet_integration_nsg_rules(nsg_dict, subnet_info.name)
+            else:
+                self.logger.info("  No NSG found on API server subnet %s", subnet_info.name)
+
+        except (ResourceNotFoundError, HttpResponseError) as e:
+            self.logger.error("  Failed to analyze API server subnet %s: %s", api_server_subnet_id, e)
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error("  Error analyzing API server subnet: %s", e)
 
     def _analyze_nic_nsgs(self) -> None:
         """Analyze NSGs associated with node NICs."""
@@ -621,6 +707,100 @@ class NSGAnalyzer(BaseAnalyzer):
         if source.startswith("10.") or source.startswith("192.168.") or source.startswith("172."):
             return True
         return False
+
+    def _check_vnet_integration_nsg_rules(self, nsg_dict: Dict[str, Any], subnet_name: str) -> None:
+        """
+        Check NSG rules on API server subnet for VNet integration clusters.
+
+        Critical rules to check:
+        1. Outbound from cluster subnet to API server subnet on port 443 (node-to-API communication)
+        2. Inbound to cluster subnet from API server subnet on port 10250 (API-to-node for kubectl exec/logs)
+
+        Args:
+            nsg_dict: NSG configuration dictionary
+            subnet_name: Name of the API server subnet
+        """
+        all_rules = nsg_dict.get("security_rules", []) + nsg_dict.get("default_rules", [])
+        sorted_rules = sorted(all_rules, key=lambda x: x.get("priority", 65000))
+
+        # Check for rules that might block critical VNet integration traffic
+        blocking_issues = []
+
+        for rule in sorted_rules:
+            if rule.get("access", "").lower() == "deny":
+                direction = rule.get("direction", "").lower()
+                protocol = rule.get("protocol", "").upper()
+                dest_port = rule.get("destination_port_range", "")
+
+                # Check if blocks port 443 outbound (node-to-API communication)
+                if direction == "outbound" and protocol in ["TCP", "*"]:
+                    if self._port_in_range(443, dest_port):
+                        blocking_issues.append({
+                            "rule_name": rule.get("name", "unknown"),
+                            "priority": rule.get("priority", 0),
+                            "issue": "Blocks outbound HTTPS (port 443) from API server subnet",
+                            "impact": "May prevent nodes from communicating with API server",
+                            "recommendation": "Ensure outbound TCP 443 is allowed from cluster subnet to API server subnet",
+                        })
+
+                # Check if blocks port 10250 inbound (API-to-node for kubectl exec/logs)
+                if direction == "inbound" and protocol in ["TCP", "*"]:
+                    if self._port_in_range(10250, dest_port):
+                        blocking_issues.append({
+                            "rule_name": rule.get("name", "unknown"),
+                            "priority": rule.get("priority", 0),
+                            "issue": "Blocks inbound TCP 10250 to cluster nodes",
+                            "impact": "kubectl exec, kubectl logs, and run command functionality will fail",
+                            "recommendation": "Ensure inbound TCP 10250 is allowed from API server subnet to cluster subnet",
+                        })
+
+        # Add findings for blocking rules
+        nsg_name = nsg_dict.get("name", subnet_name)
+        for issue in blocking_issues:
+            self.add_finding(
+                Finding.create_critical(
+                    FindingCode.NSG_BLOCKING_AKS_TRAFFIC,
+                    message=f"NSG rule '{issue['rule_name']}' in '{nsg_name}' on API server subnet "
+                            f"may block VNet integration traffic",
+                    recommendation=issue['recommendation'],
+                    rule_name=issue['rule_name'],
+                    priority=issue['priority'],
+                    issue=issue['issue'],
+                    impact=issue['impact'],
+                    subnet_type="api_server",
+                )
+            )
+
+        if not blocking_issues:
+            self.logger.debug("    [OK] No blocking rules found on API server subnet NSG")
+
+    def _port_in_range(self, port: int, port_range: str) -> bool:
+        """
+        Check if a specific port is included in a port range.
+
+        Args:
+            port: Port number to check
+            port_range: Port range string (e.g., "443", "80-443", "*")
+
+        Returns:
+            True if port is in range, False otherwise
+        """
+        if not port_range or port_range == "*":
+            return True
+
+        # Single port
+        if "-" not in str(port_range):
+            try:
+                return int(port_range) == port
+            except ValueError:
+                return False
+
+        # Port range
+        try:
+            start, end = port_range.split("-")
+            return int(start) <= port <= int(end)
+        except (ValueError, AttributeError):
+            return False
 
     # pylint: disable=too-many-nested-blocks
     def _analyze_nsg_compliance(self) -> None:
