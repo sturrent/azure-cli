@@ -173,15 +173,8 @@ class DNSAnalyzer(BaseAnalyzer):
 
             self.logger.warning("  Custom private DNS zone: %s", private_dns_zone)
 
-            # Add informational finding
-            self.add_finding(
-                Finding.create_info(
-                    code=FindingCode.PRIVATE_DNS_MISCONFIGURED,
-                    message=f"Cluster uses custom private DNS zone: {private_dns_zone}",
-                    recommendation="Ensure VNet is linked to this private DNS zone for proper name resolution",
-                    privateDnsZone=private_dns_zone,
-                )
-            )
+            # Note: VNet link validation is performed by misconfiguration_analyzer
+            # which will create CRITICAL findings if VNet links are missing
         else:
             # System-managed private DNS zone
             self.dns_analysis = {
