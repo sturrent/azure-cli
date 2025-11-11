@@ -329,8 +329,8 @@ def run_diagnostics(  # pylint: disable=too-many-locals
             "insufficient permissions to read VMSS/VNet configuration"
         )
 
-    # Phase 6: Analyze Private DNS configuration
-    logger.warning("[6/8] Analyzing Private DNS configuration...")
+    # Phase 6: Analyze DNS configuration
+    logger.warning("[6/8] Analyzing DNS configuration...")
     dns_analyzer = DNSAnalyzer(clients=clients, cluster_info=cluster_info, logger=logger)
     private_dns_analysis = dns_analyzer.analyze()
 
