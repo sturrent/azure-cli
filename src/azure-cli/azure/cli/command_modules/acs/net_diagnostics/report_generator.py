@@ -804,11 +804,25 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                         for implication in implications:
                             print(f"  {implication}")
             else:
-                print(
-                    "- **Access Restrictions:** None "
-                    "(unrestricted public access)"
-                )
-                if not is_private:
+                # No authorized IP ranges configured
+                if is_private:
+                    # Private cluster - access is restricted by design
+                    if vnet_integration:
+                        print(
+                            "- **Access Restrictions:** Private cluster "
+                            "(access via VNet integration)"
+                        )
+                    else:
+                        print(
+                            "- **Access Restrictions:** Private cluster "
+                            "(access via private endpoint)"
+                        )
+                else:
+                    # Public cluster with no IP restrictions
+                    print(
+                        "- **Access Restrictions:** None "
+                        "(unrestricted public access)"
+                    )
                     print(
                         "  [WARNING] API server is accessible from any IP "
                         "address on the internet"
