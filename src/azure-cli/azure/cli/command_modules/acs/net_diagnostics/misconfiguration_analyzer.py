@@ -31,8 +31,62 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         self.clients = clients
         self.network_client = clients.get('network_client')
         self.privatedns_client = clients.get('privatedns_client')
+        self.credential = clients.get('credential')  # Store credential for cross-subscription clients
         self.logger = logger or logging.getLogger(__name__)
         self._cluster_stopped = False
+
+    def _get_privatedns_client_for_zone(self, dns_zone_resource_id: str):
+        """
+        Get a PrivateDnsManagementClient scoped to the subscription of the DNS zone.
+
+        This handles cross-subscription BYO private DNS zones where the DNS zone
+        is in a different subscription than the AKS cluster.
+
+        Args:
+            dns_zone_resource_id: Full resource ID of the private DNS zone
+
+        Returns:
+            PrivateDnsManagementClient instance or None if creation fails
+        """
+        try:
+            # Parse subscription ID from resource ID
+            #  Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateDnsZones/{zone}
+            parts = dns_zone_resource_id.split("/")
+            if len(parts) < 3 or parts[1] != "subscriptions":
+                self.logger.warning("Invalid DNS zone resource ID format: %s", dns_zone_resource_id)
+                return None
+
+            dns_zone_subscription = parts[2]
+
+            # Check if we need a different client (cross-subscription scenario)
+            current_subscription = self.clients.get('subscription_id')
+            if dns_zone_subscription == current_subscription:
+                # Same subscription, use existing client
+                return self.privatedns_client
+
+            # Cross-subscription: create new client if we have credentials
+            if not self.credential:
+                self.logger.warning(
+                    "BYO private DNS zone is in different subscription (%s) but no credential available for cross-subscription access",  # pylint: disable=line-too-long
+                    dns_zone_subscription
+                )
+                return None
+
+            # Import here to avoid circular imports
+            from azure.mgmt.privatedns import PrivateDnsManagementClient
+
+            self.logger.info(
+                "Creating cross-subscription PrivateDnsManagementClient for subscription %s",
+                dns_zone_subscription
+            )
+
+            return PrivateDnsManagementClient(
+                credential=self.credential,
+                subscription_id=dns_zone_subscription
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.warning("Could not create cross-subscription DNS client: %s", e)
+            return None
 
     def analyze(
         self,
@@ -583,7 +637,11 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
     ) -> None:
         """Check if VNets are properly linked to private DNS zone"""
         try:
+            # Determine which privatedns client to use (handle cross-subscription BYO DNS zones)
+            dns_client = self.privatedns_client  # Default to cluster subscription client
+
             if "/" in private_dns_zone:
+                # BYO private DNS zone with full resource ID
                 dns_zone_parts = private_dns_zone.split("/")
                 dns_zone_rg = (
                     dns_zone_parts[4]
@@ -595,7 +653,32 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                     if dns_zone_parts
                     else ""
                 )
+
+                # Try to get cross-subscription client if needed
+                cross_sub_client = self._get_privatedns_client_for_zone(private_dns_zone)
+                if cross_sub_client:
+                    dns_client = cross_sub_client
+                else:
+                    self.logger.warning(
+                        "Could not access BYO private DNS zone in cross-subscription scenario: %s",
+                        private_dns_zone
+                    )
+                    # Add informational finding about cross-subscription limitation
+                    findings.append({
+                        "severity": "info",
+                        "code": "PDNS_CROSS_SUBSCRIPTION_ACCESS",
+                        "message": (
+                            f"BYO private DNS zone is in a different subscription: {private_dns_zone}. "
+                            "VNet link validation skipped due to cross-subscription access limitations."
+                        ),
+                        "recommendation": (
+                            "Ensure you have appropriate permissions to the DNS zone subscription, "
+                            "or manually verify that cluster VNets are linked to the private DNS zone."
+                        ),
+                    })
+                    return  # Skip validation if we can't access the DNS zone
             else:
+                # System-managed DNS zone name without full path - search in current subscription
                 dns_zone_name = private_dns_zone
                 dns_zone_rg = self._find_private_dns_zone_rg(dns_zone_name)
 
@@ -603,7 +686,7 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                 # List VNet links for the private DNS zone using SDK
                 # (replaces: az network private-dns link vnet list)
                 links_list = list(
-                    self.privatedns_client.virtual_network_links.list(
+                    dns_client.virtual_network_links.list(
                         dns_zone_rg,
                         dns_zone_name
                     )
