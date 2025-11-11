@@ -381,6 +381,13 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
     ) -> None:
         """Check system-managed private DNS zone issues"""
         try:
+            # Get the cluster's managed resource group (MC_ resource group)
+            # System-managed DNS zones are created in this resource group
+            node_resource_group = cluster_info.get("node_resource_group", "")
+            if not node_resource_group:
+                self.logger.info("No node_resource_group found, skipping system DNS check")
+                return
+
             # List all private DNS zones in the subscription
             # Note: Using list() to get all zones across subscription
             # (not limited to one RG)
@@ -394,7 +401,14 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                     zone_dict = self._to_dict(zone.as_dict())
                     # Parse resource group from zone ID
                     parsed = self._parse_resource_id(zone.id)
-                    zone_dict["resource_group"] = parsed["resource_group"]
+                    zone_rg = parsed["resource_group"]
+                    zone_dict["resource_group"] = zone_rg
+
+                    # Only include zones in the cluster's MC resource group
+                    # This avoids checking other clusters' DNS zones (and duplicate findings)
+                    if zone_rg.lower() != node_resource_group.lower():
+                        continue
+
                     aks_private_zones.append(zone_dict)
 
             if not aks_private_zones:
@@ -405,7 +419,13 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
                 zone_rg = zone.get("resource_group", "")
 
                 if zone_rg and zone_name:
-                    self._check_dns_server_vnet_links(zone_rg, zone_name, cluster_info, findings)
+                    # Pass actual zone name for both API calls and display
+                    self._check_dns_server_vnet_links(
+                        zone_rg,
+                        zone_name,
+                        cluster_info,
+                        findings
+                    )
 
         except Exception as e:  # pylint: disable=broad-except
             self.logger.info("Could not analyze system private DNS issues: %s", e)
@@ -418,7 +438,14 @@ class MisconfigurationAnalyzer:  # pylint: disable=too-few-public-methods
         findings: List[Dict[str, Any]]
     ) -> None:
         """Check if VNets with custom DNS servers are properly linked
-        to private DNS zone"""
+        to private DNS zone
+
+        Args:
+            zone_rg: Resource group containing the zone
+            zone_name: Zone name for both API calls and display
+            cluster_info: Cluster information
+            findings: List to append findings to
+        """
         try:
             # List VNet links for the private DNS zone using SDK
             # (replaces: az network private-dns link vnet list)
