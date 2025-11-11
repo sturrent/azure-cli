@@ -19,7 +19,8 @@ class NSGAnalyzer(BaseAnalyzer):
     """Analyzes Network Security Group configurations for AKS clusters."""
 
     def __init__(self, clients: Dict[str, Any], cluster_info: Dict[str, Any],
-                 vmss_info: List[Dict[str, Any]], logger=None):
+                 vmss_info: List[Dict[str, Any]], vm_info: Optional[List[Dict[str, Any]]] = None,
+                 logger=None):
         """
         Initialize NSG Analyzer.
 
@@ -27,10 +28,12 @@ class NSGAnalyzer(BaseAnalyzer):
             clients: Dictionary containing authenticated Azure clients
             cluster_info: AKS cluster information
             vmss_info: VMSS information from VMSS analyzer
+            vm_info: VM information for Virtual Machines node pools
             logger: Optional logger instance
         """
         super().__init__(clients, cluster_info, logger=logger)
         self.vmss_info = vmss_info
+        self.vm_info = vm_info or []
         self.network_client = clients.get('network_client')
         self.subscription_id = clients.get('subscription_id')
         self.nsg_analysis = {
@@ -198,6 +201,22 @@ class NSGAnalyzer(BaseAnalyzer):
                     processed_subnets.add(subnet_id)
                     self._process_subnet_nsg(subnet_id, subnet_type="node")
 
+        # 1b. Analyze node subnets from VM configuration (for Virtual Machines node pools)
+        for vm in self.vm_info:
+            # Get NIC details we stored during collection
+            nic_details_list = vm.get("nic_details", [])
+            for nic_detail in nic_details_list:
+                ip_configs = nic_detail.get("ip_configurations", [])
+                for ip_config in ip_configs:
+                    subnet = ip_config.get("subnet", {})
+                    subnet_id = subnet.get("id")
+
+                    if not subnet_id or subnet_id in processed_subnets:
+                        continue
+
+                    processed_subnets.add(subnet_id)
+                    self._process_subnet_nsg(subnet_id, subnet_type="node")
+
         # 2. Analyze pod subnets from agent pool configuration (Azure CNI Pod Subnet mode)
         agent_pools = self.cluster_info.get("agent_pool_profiles", [])
         if not agent_pools:
@@ -342,6 +361,7 @@ class NSGAnalyzer(BaseAnalyzer):
 
     def _analyze_nic_nsgs(self) -> None:
         """Analyze NSGs associated with node NICs."""
+        # Analyze VMSS NICs
         for vmss in self.vmss_info:
             vmss_name = vmss.get("name")
             if not vmss_name:
@@ -386,6 +406,50 @@ class NSGAnalyzer(BaseAnalyzer):
                         self.logger.error("  Failed to analyze NIC NSG %s: %s", nsg_id, e)
                 else:
                     self.logger.info("  No NSG found on VMSS %s NIC", vmss_name)
+
+        # Analyze VM NICs (for Virtual Machines node pools)
+        for vm in self.vm_info:
+            vm_name = vm.get("name")
+            if not vm_name:
+                continue
+
+            # Get NIC details we stored during collection
+            nic_details_list = vm.get("nic_details", [])
+            for nic_detail in nic_details_list:
+                nsg_info = nic_detail.get("network_security_group")
+                if nsg_info:
+                    nsg_id = nsg_info.get("id")
+                    nsg_name = nsg_id.split("/")[-1] if nsg_id else "unknown"
+
+                    try:
+                        # Parse NSG ID to get resource group
+                        nsg_parsed = self._parse_resource_id(nsg_id)
+                        nsg_rg = nsg_parsed["resource_group"]
+
+                        # Get NSG details using SDK
+                        nsg_details = self.network_client.network_security_groups.get(nsg_rg, nsg_name)
+
+                        if nsg_details:
+                            # Convert to dictionary with snake_case keys
+                            nsg_dict = self._to_dict(nsg_details)
+
+                            self.nsg_analysis["nic_nsgs"].append(
+                                {
+                                    "vm_name": vm_name,
+                                    "nic_name": nic_detail.get("name", "unknown"),
+                                    "nsg_id": nsg_id,
+                                    "nsg_name": nsg_name,
+                                    "rules": nsg_dict.get("security_rules", []),
+                                    "default_rules": nsg_dict.get("default_security_rules", []),
+                                }
+                            )
+
+                            self.logger.info("  Found NSG on VM %s NIC: %s", vm_name, nsg_name)
+
+                    except (AzureSDKError, HttpResponseError) as e:
+                        self.logger.error("  Failed to analyze NIC NSG %s: %s", nsg_id, e)
+                else:
+                    self.logger.info("  No NSG found on VM %s NIC", vm_name)
 
     def _analyze_inter_node_communication(self) -> None:
         """Analyze if NSG rules could block inter-node communication."""

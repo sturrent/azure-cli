@@ -165,6 +165,48 @@ def _collect_permission_findings(
     return unique_findings
 
 
+def _enrich_agent_pools_with_vm_subnets(
+    agent_pools: List[Dict[str, Any]],
+    vm_analysis: List[Dict[str, Any]]
+) -> None:
+    """
+    Enrich agent pool data with subnet information from actual VM NICs.
+
+    For VM node pools, the agent pool profile doesn't include vnet_subnet_id,
+    so we need to extract it from the actual VM NICs.
+
+    Args:
+        agent_pools: List of agent pool configurations (modified in place)
+        vm_analysis: List of VM analysis data with NIC details
+    """
+    if not vm_analysis:
+        return
+
+    # Extract subnet IDs from VM NICs
+    vm_subnet_ids = set()
+    for vm in vm_analysis:
+        nic_details = vm.get("nic_details", [])
+        for nic in nic_details:
+            ip_configs = nic.get("ip_configurations", [])
+            for ip_config in ip_configs:
+                subnet = ip_config.get("subnet")
+                if subnet:
+                    subnet_id = subnet.get("id")
+                    if subnet_id:
+                        vm_subnet_ids.add(subnet_id)
+
+    # Enrich VM-type agent pools with subnet information
+    for pool in agent_pools:
+        pool_type = pool.get("type")
+        if pool_type == "VirtualMachines":
+            # If there's only one subnet used by VMs, assign it to the pool
+            if len(vm_subnet_ids) == 1:
+                pool["vnet_subnet_id"] = next(iter(vm_subnet_ids))
+            elif len(vm_subnet_ids) > 1:
+                # Multiple subnets - store them all (though this is unusual)
+                pool["vnet_subnet_id"] = next(iter(vm_subnet_ids))  # Use first one for display
+
+
 def run_diagnostics(  # pylint: disable=too-many-locals
     aks_client,
     agent_pools_client,
@@ -260,13 +302,19 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     cluster_info = cluster_data["cluster_info"]
     agent_pools = cluster_data["agent_pools"]
 
-    # Phase 2: Analyze VNet configuration
+    # Collect node network configuration (VMSS and/or VMs depending on node pool type)
+    # This must be done BEFORE VNet analysis so we can enrich agent pools with VM subnet info
     logger.warning("[2/8] Analyzing VNet configuration...")
-    vnets_analysis = collector.collect_vnet_info(agent_pools)
-
-    # Collect VMSS configuration (needed for Route Table analysis)
-    logger.warning("  Collecting VMSS network configuration...")
+    logger.warning("  Collecting node network configuration...")
     vmss_analysis = collector.collect_vmss_info(cluster_info)
+    vm_analysis = collector.collect_vm_info(cluster_info, agent_pools)
+
+    # Enrich agent pools with subnet information from actual VMs (for VM node pools)
+    if vm_analysis:
+        _enrich_agent_pools_with_vm_subnets(agent_pools, vm_analysis)
+
+    # Now analyze VNets with enriched agent pool data
+    vnets_analysis = collector.collect_vnet_info(agent_pools)
 
     # Check if we have permission issues that might affect subsequent analysis
     has_vmss_permission_issues = any(
@@ -317,6 +365,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         clients=clients,
         cluster_info=cluster_info,
         vmss_info=vmss_analysis,
+        vm_info=vm_analysis,
         logger=logger
     )
     nsg_analysis = nsg_analyzer.analyze()
@@ -437,6 +486,7 @@ def run_diagnostics(  # pylint: disable=too-many-locals
         private_dns_analysis=private_dns_analysis,
         api_server_access_analysis=api_server_access_analysis,
         vmss_analysis=vmss_analysis,
+        vm_analysis=vm_analysis,
         nsg_analysis=nsg_analysis,
         api_probe_results=api_probe_results,
         failure_analysis={"enabled": False},

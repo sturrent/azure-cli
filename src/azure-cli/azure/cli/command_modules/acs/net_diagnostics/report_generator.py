@@ -33,7 +33,8 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         private_dns_analysis: Dict[str, Any],
         api_server_access_analysis: Dict[str, Any],
         vmss_analysis: List[Dict[str, Any]],
-        nsg_analysis: Dict[str, Any],
+        vm_analysis: Optional[List[Dict[str, Any]]] = None,
+        nsg_analysis: Dict[str, Any] = None,
         api_probe_results: Optional[Dict[str, Any]] = None,
         failure_analysis: Optional[Dict[str, Any]] = None,
         script_version: str = "2.2.0",
@@ -57,6 +58,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             private_dns_analysis: Private DNS analysis results
             api_server_access_analysis: API server access analysis
             vmss_analysis: VMSS configuration analysis
+            vm_analysis: VM configuration analysis for Virtual Machines node pools
             nsg_analysis: NSG analysis results
             api_probe_results: API connectivity probe results
             failure_analysis: Failure analysis results
@@ -77,7 +79,8 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         self.private_dns_analysis = private_dns_analysis
         self.api_server_access_analysis = api_server_access_analysis
         self.vmss_analysis = vmss_analysis
-        self.nsg_analysis = nsg_analysis
+        self.vm_analysis = vm_analysis or []
+        self.nsg_analysis = nsg_analysis or {}
         self.api_probe_results = api_probe_results
         self.failure_analysis = failure_analysis or {"enabled": False}
         self.script_version = script_version
@@ -126,6 +129,7 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
                 "private_dns": self.private_dns_analysis,
                 "api_server_access": self.api_server_access_analysis,
                 "vmss_configuration": self.vmss_analysis,
+                "vm_configuration": self.vm_analysis,
                 "nsg_configuration": self.nsg_analysis,
                 "routing_analysis": {
                     "outbound_type": (
@@ -387,6 +391,142 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         if network_dataplane and network_dataplane != "azure":
             print(f"  - Network Dataplane: {network_dataplane}")
 
+    def _get_pool_count_and_size(self, pool: Dict[str, Any]) -> tuple:
+        """
+        Get node count and VM size for a pool.
+
+        Args:
+            pool: Agent pool dictionary
+
+        Returns:
+            Tuple of (count, vm_size)
+        """
+        pool_type = pool.get("type", "VirtualMachineScaleSets")
+
+        if pool_type == "VirtualMachines":
+            # For VM pools, use virtualMachinesProfile or virtualMachineNodesStatus
+            vm_profile = pool.get("virtual_machines_profile", {})
+            scale_profile = vm_profile.get("scale", {})
+            manual_sizes = scale_profile.get("manual", [])
+
+            # Also check virtualMachineNodesStatus for actual status
+            vm_status = pool.get("virtual_machine_nodes_status", [])
+            if vm_status:
+                manual_sizes = vm_status
+
+            if manual_sizes:
+                # Count total nodes across all VM sizes
+                count = sum(size.get("count", 0) for size in manual_sizes)
+                # Get first VM size for display
+                vm_size = manual_sizes[0].get("size", "unknown") if manual_sizes else "unknown"
+            else:
+                # Fallback to standard count field
+                count = pool.get("count") or 0
+                vm_size = pool.get("vm_size", "unknown")
+        else:
+            # VMSS pools use standard count and vm_size
+            count = pool.get("count", 0)
+            vm_size = pool.get("vm_size", "unknown")
+
+        return count, vm_size
+
+    def _get_subnet_display(self, subnet_id: str) -> str:
+        """
+        Get subnet display string with CIDR if available.
+
+        Args:
+            subnet_id: Subnet resource ID
+
+        Returns:
+            Subnet display string (name or name with CIDR)
+        """
+        if not subnet_id:
+            return "N/A"
+
+        subnet_name = subnet_id.split("/")[-1] if "/" in subnet_id else subnet_id
+
+        # Look up CIDR if available
+        if self.subnet_cidrs:
+            cidr = self.subnet_cidrs.get(subnet_id.lower())
+            if cidr:
+                return f"{subnet_name} ({cidr})"
+
+        return subnet_name
+
+    def _print_vm_pool_sizes(self, pool: Dict[str, Any], count: int, vm_size: str):
+        """
+        Print VM sizes for Virtual Machines pool type (compact format).
+
+        Args:
+            pool: Agent pool dictionary
+            count: Total node count
+            vm_size: Default VM size
+        """
+        vm_profile = pool.get("virtual_machines_profile", {})
+        scale_profile = vm_profile.get("scale", {})
+        manual_sizes = scale_profile.get("manual", [])
+
+        # Also check virtualMachineNodesStatus
+        vm_status = pool.get("virtual_machine_nodes_status", [])
+        if vm_status:
+            manual_sizes = vm_status
+
+        if manual_sizes and len(manual_sizes) > 0:
+            if len(manual_sizes) == 1:
+                # Single VM size
+                size_info = manual_sizes[0]
+                vm_size = size_info.get('size', 'unknown')
+                vm_count = size_info.get('count', 0)
+                print(f"  - VM Size: {vm_size}, Count: {vm_count}")
+            else:
+                # Multiple VM sizes
+                print("  - VM Sizes:")
+                for size_info in manual_sizes:
+                    size_name = size_info.get('size', 'unknown')
+                    size_count = size_info.get('count', 0)
+                    print(f"    - {size_name}: {size_count} nodes")
+                print(f"  - Total Nodes: {count}")
+        else:
+            # Fallback
+            print(f"  - VM Size: {vm_size}, Count: {count}")
+
+    def _print_vm_pool_sizes_detailed(self, pool: Dict[str, Any], count: int, vm_size: str):
+        """
+        Print VM sizes for Virtual Machines pool type (detailed format).
+
+        Args:
+            pool: Agent pool dictionary
+            count: Total node count
+            vm_size: Default VM size
+        """
+        vm_profile = pool.get("virtual_machines_profile", {})
+        scale_profile = vm_profile.get("scale", {})
+        manual_sizes = scale_profile.get("manual", [])
+
+        # Also check virtualMachineNodesStatus
+        vm_status = pool.get("virtual_machine_nodes_status", [])
+        if vm_status:
+            manual_sizes = vm_status
+
+        if manual_sizes and len(manual_sizes) > 0:
+            if len(manual_sizes) == 1:
+                # Single VM size - simple display
+                size_info = manual_sizes[0]
+                print(f"- VM Size: {size_info.get('size', 'unknown')}")
+                print(f"- Count: {size_info.get('count', 0)}")
+            else:
+                # Multiple VM sizes - show detailed breakdown
+                print("- VM Sizes:")
+                for size_info in manual_sizes:
+                    size_name = size_info.get("size", "unknown")
+                    node_count = size_info.get("count", 0)
+                    print(f"  - {size_name}: {node_count} nodes")
+                print(f"- Total Nodes: {count}")
+        else:
+            # Fallback to standard display
+            print(f"- VM Size: {vm_size}")
+            print(f"- Count: {count}")
+
     def _print_node_pools(self, show_details: bool = False):
         """Print node pool information section
 
@@ -403,45 +543,42 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
         for pool in self.agent_pools:
             name = pool.get("name", "unknown")
             mode = pool.get("mode", "User")
-            count = pool.get("count", 0)
+            pool_type = pool.get("type", "VirtualMachineScaleSets")
 
-            # Get subnet info with CIDR
+            # Get count and VM size using helper method
+            count, vm_size = self._get_pool_count_and_size(pool)
+
+            # Get subnet info with CIDR using helper method
             vnet_subnet_id = pool.get("vnet_subnet_id")
-            if vnet_subnet_id and "/" in vnet_subnet_id:
-                subnet_name = vnet_subnet_id.split("/")[-1]
-            else:
-                subnet_name = vnet_subnet_id or "N/A"
-
-            # Look up CIDR if available
-            subnet_display = subnet_name
-            if vnet_subnet_id and self.subnet_cidrs:
-                cidr = self.subnet_cidrs.get(vnet_subnet_id.lower())
-                if cidr:
-                    subnet_display = f"{subnet_name} ({cidr})"
+            subnet_display = self._get_subnet_display(vnet_subnet_id)
 
             if show_details:
                 # Detailed view: show all information with indentation
-                vm_size = pool.get("vm_size", "unknown")
                 os_type = pool.get("os_type", "Linux")
 
-                print(f"- {name} ({mode}, {os_type})")
-                print(f"  - VM Size: {vm_size}, Count: {count}")
+                # Format pool header based on type
+                if pool_type == "VirtualMachines":
+                    print(f"- {name} ({mode}, {os_type}, Virtual Machines)")
+                else:
+                    print(f"- {name} ({mode}, {os_type})")
+
+                # Show VM sizes using helper method
+                if pool_type == "VirtualMachines":
+                    self._print_vm_pool_sizes(pool, count, vm_size)
+                else:
+                    print(f"  - VM Size: {vm_size}, Count: {count}")
+
                 print(f"  - Node Subnet: {subnet_display}")
 
                 # Show pod subnet for Azure CNI Pod Subnet mode
                 pod_subnet_id = pool.get("pod_subnet_id")
                 if pod_subnet_id:
-                    pod_subnet_name = pod_subnet_id.split("/")[-1] if "/" in pod_subnet_id else pod_subnet_id
-                    # Look up pod subnet CIDR
-                    pod_subnet_display = pod_subnet_name
-                    if self.subnet_cidrs:
-                        pod_cidr = self.subnet_cidrs.get(pod_subnet_id.lower())
-                        if pod_cidr:
-                            pod_subnet_display = f"{pod_subnet_name} ({pod_cidr})"
+                    pod_subnet_display = self._get_subnet_display(pod_subnet_id)
                     print(f"  - Pod Subnet: {pod_subnet_display}")
             else:
                 # Compact summary view: single line per pool
-                print(f"- {name} ({mode}, Count: {count}, Subnet: {subnet_display})")
+                type_suffix = " [VM]" if pool_type == "VirtualMachines" else ""
+                print(f"- {name} ({mode}, Count: {count}, Subnet: {subnet_display}){type_suffix}")
 
     def _print_outbound_configuration(self):
         """Print outbound IP configuration section"""
@@ -669,36 +806,37 @@ class ReportGenerator:  # pylint: disable=too-many-instance-attributes
             for pool in self.agent_pools:
                 name = pool.get("name", "unknown")
                 mode = pool.get("mode", "User")
-                count = pool.get("count", 0)
-                vm_size = pool.get("vm_size", "unknown")
+                pool_type = pool.get("type", "VirtualMachineScaleSets")
                 os_type = pool.get("os_type", "Linux")
 
-                print(f"**{name}** ({mode}, {os_type})")
-                print(f"- VM Size: {vm_size}")
-                print(f"- Count: {count}")
+                # Format header based on pool type
+                if pool_type == "VirtualMachines":
+                    print(f"**{name}** ({mode}, {os_type}, Virtual Machines)")
+                else:
+                    print(f"**{name}** ({mode}, {os_type})")
 
-                # Show node subnet with CIDR if available
+                # Get count and VM size using helper method
+                count, vm_size = self._get_pool_count_and_size(pool)
+
+                # Show VM sizes and count based on pool type
+                if pool_type == "VirtualMachines":
+                    # Use helper method for VM pool sizes display
+                    self._print_vm_pool_sizes_detailed(pool, count, vm_size)
+                else:
+                    # VMSS pools use standard display
+                    print(f"- VM Size: {vm_size}")
+                    print(f"- Count: {count}")
+
+                # Show node subnet with CIDR using helper method
                 vnet_subnet_id = pool.get("vnet_subnet_id")
                 if vnet_subnet_id:
-                    subnet_name = vnet_subnet_id.split("/")[-1] if "/" in vnet_subnet_id else vnet_subnet_id
-                    # Look up CIDR
-                    subnet_display = subnet_name
-                    if self.subnet_cidrs:
-                        cidr = self.subnet_cidrs.get(vnet_subnet_id.lower())
-                        if cidr:
-                            subnet_display = f"{subnet_name} ({cidr})"
+                    subnet_display = self._get_subnet_display(vnet_subnet_id)
                     print(f"- Node Subnet: {subnet_display}")
 
-                # Show pod subnet with CIDR if available
+                # Show pod subnet with CIDR using helper method
                 pod_subnet_id = pool.get("pod_subnet_id")
                 if pod_subnet_id:
-                    subnet_name = pod_subnet_id.split("/")[-1] if "/" in pod_subnet_id else pod_subnet_id
-                    # Look up CIDR
-                    subnet_display = subnet_name
-                    if self.subnet_cidrs:
-                        cidr = self.subnet_cidrs.get(pod_subnet_id.lower())
-                        if cidr:
-                            subnet_display = f"{subnet_name} ({cidr})"
+                    subnet_display = self._get_subnet_display(pod_subnet_id)
                     print(f"- Pod Subnet: {subnet_display}")
 
                 print()

@@ -1,11 +1,11 @@
 """
 Connectivity Tester for AKS clusters
 
-Handles active connectivity probing from VMSS instances including:
+Handles active connectivity probing from node instances (VMSS or VM) including:
 - API server reachability testing
 - DNS resolution validation
 - Network connectivity checks
-- VMSS command execution via Azure SDK
+- Node command execution via Azure SDK (VMSS or VM run-command)
 - Test result analysis
 """
 
@@ -32,9 +32,18 @@ class VMSSInstance:
     provisioning_state: str
 
 
+@dataclass
+class VMInstance:
+    """VM instance information for connectivity testing"""
+
+    vm_name: str
+    computer_name: str
+    provisioning_state: str
+
+
 # pylint: disable=too-few-public-methods
 class ConnectivityTester:
-    """Manages connectivity testing from AKS VMSS instances"""
+    """Manages connectivity testing from AKS node instances (VMSS or VM)"""
 
     def __init__(
         self,
@@ -116,36 +125,43 @@ class ConnectivityTester:
             "summary": {"total_tests": 0, "passed": 0, "failed": 0, "errors": 0},
         }
 
-        # Get VMSS instances for testing (limited to first available for performance)
-        vmss_instances = self._list_ready_vmss_instances()
-        if not vmss_instances:
-            self.logger.info("No VMSS instances found for connectivity testing")
+        # Get node instances for testing (VMSS or VM, limited to first available for performance)
+        node_instances = self._list_ready_node_instances()
+        if not node_instances:
+            self.logger.info("No node instances found for connectivity testing")
             return self.probe_results
 
-        # Run connectivity tests on only the first available VMSS to avoid long execution times
+        # Run connectivity tests on only the first available node to avoid long execution times
         # in clusters with many node pools
-        first_vmss = vmss_instances[0]
-        total_vmss_count = len(vmss_instances)
-        if total_vmss_count > 1:
+        first_node = node_instances[0]
+        total_node_count = len(node_instances)
+        node_type = "VMSS" if isinstance(first_node, VMSSInstance) else "VM"
+        node_name = first_node.vmss_name if isinstance(first_node, VMSSInstance) else first_node.vm_name
+
+        if total_node_count > 1:
             self.logger.info(
-                "Found %s VMSS instance(s). Testing connectivity from the first one: %s "
+                "Found %s node instance(s). Testing connectivity from the first one: %s (%s) "
                 "(skipping %s others for performance)",
-                total_vmss_count,
-                first_vmss.vmss_name,
-                total_vmss_count - 1,
+                total_node_count,
+                node_name,
+                node_type,
+                total_node_count - 1,
             )
         else:
             self.logger.info(
-                "Found %s VMSS instance(s). Testing connectivity from: %s", total_vmss_count, first_vmss.vmss_name
+                "Found %s node instance(s). Testing connectivity from: %s (%s)",
+                total_node_count,
+                node_name,
+                node_type
             )
 
-        self._run_vmss_connectivity_tests(first_vmss)
+        self._run_node_connectivity_tests(first_node)
 
         return self.probe_results
 
-    def _list_ready_vmss_instances(self) -> List[VMSSInstance]:
-        """Return one ready instance per VMSS for connectivity probing."""
-        instances: List[VMSSInstance] = []
+    def _list_ready_node_instances(self) -> List:
+        """Return one ready instance per VMSS or VM for connectivity probing."""
+        instances: List = []
         mc_rg = self.cluster_info.get("node_resource_group", "")
         if not mc_rg:
             return instances
@@ -170,8 +186,9 @@ class ConnectivityTester:
                 self.probe_results["mc_resource_group"] = mc_rg
             else:
                 self.logger.info("Error listing VMSS in %s: %s", mc_rg, exc)
-            return instances
+            vmss_list = []  # Continue to check for VMs
 
+        # Collect VMSS instances
         for vmss in vmss_list:
             vmss_name = vmss.name
             if not vmss_name:
@@ -202,10 +219,52 @@ class ConnectivityTester:
                         )
                         break  # Only one instance per VMSS
 
+        # If no VMSS instances found, try to collect VM instances (for VM node pools)
+        if not instances:
+            try:
+                # List VMs using SDK
+                vm_list = list(self.compute_client.virtual_machines.list(mc_rg))
+            except (ResourceNotFoundError, HttpResponseError) as exc:
+                error_str = str(exc).lower()
+                if "authorization" in error_str or "forbidden" in error_str or "permission" in error_str:
+                    if not self.probe_results.get("skipped"):  # Only log if not already logged for VMSS
+                        self.logger.warning(
+                            "  Connectivity tests skipped: Insufficient permissions to access MC_ resource group (%s). "
+                            "Grant the 'Virtual Machine Contributor' role or a custom role with "
+                            "'Microsoft.Compute/virtualMachines/runCommand/action' permission "
+                            "on the MC_ resource group to run connectivity tests.",
+                            mc_rg
+                        )
+                        self.probe_results["skipped"] = True
+                        self.probe_results["reason"] = "Insufficient permissions to access MC_ resource group"
+                        self.probe_results["mc_resource_group"] = mc_rg
+                else:
+                    self.logger.info("Error listing VMs in %s: %s", mc_rg, exc)
+                return instances
+
+            # Collect VM instances
+            for vm in vm_list:
+                vm_name = vm.name
+                if not vm_name:
+                    continue
+
+                prov_state = vm.provisioning_state
+                if prov_state and prov_state.lower() == "succeeded":
+                    computer_name = vm.os_profile.computer_name if vm.os_profile else ""
+
+                    instances.append(
+                        VMInstance(
+                            vm_name=vm_name,
+                            computer_name=computer_name,
+                            provisioning_state=prov_state,
+                        )
+                    )
+                    break  # Only one VM needed for testing
+
         return instances
 
-    def _run_vmss_connectivity_tests(self, vmss_instance: VMSSInstance):
-        """Run comprehensive connectivity tests from a VMSS instance"""
+    def _run_node_connectivity_tests(self, node_instance):
+        """Run comprehensive connectivity tests from a node instance (VMSS or VM)"""
         api_server_fqdn = self._get_api_server_fqdn()
         if not api_server_fqdn:
             self.logger.info("Cannot determine API server FQDN. Skipping connectivity tests.")
@@ -267,13 +326,22 @@ class ConnectivityTester:
             # Check if this test should be skipped due to dependency failure
             if skip_group and skip_group in failed_tests:
                 self.logger.info("  Test: %s - SKIPPED (%s failed)", test_name, skip_group)
+
+                # Get node name and type
+                if isinstance(node_instance, VMSSInstance):
+                    node_name = node_instance.vmss_name
+                    node_id = node_instance.instance_id
+                else:  # VMInstance
+                    node_name = node_instance.vm_name
+                    node_id = None
+
                 result = {
                     "test_name": test_name,
                     "description": test["description"],
                     "command": test["command"],
-                    "vmss_name": vmss_instance.vmss_name,
-                    "instance_id": vmss_instance.instance_id,
-                    "computer_name": vmss_instance.computer_name,
+                    "node_name": node_name,
+                    "node_id": node_id,
+                    "computer_name": node_instance.computer_name,
                     "status": "skipped",
                     "stdout": "",
                     "stderr": "",
@@ -287,7 +355,7 @@ class ConnectivityTester:
                 continue
 
             self.logger.warning("  Running test: %s", test_name)
-            result = self._execute_vmss_test(vmss_instance, test)
+            result = self._execute_node_test(node_instance, test)
             self.probe_results["tests"].append(result)
 
             # Track failed tests to determine skip logic for dependent tests
@@ -346,15 +414,23 @@ class ConnectivityTester:
 
         return None
 
-    def _execute_vmss_test(self, vmss_instance: VMSSInstance, test: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a connectivity test on a VMSS instance"""
+    def _execute_node_test(self, node_instance, test: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a connectivity test on a node instance (VMSS or VM)"""
+        # Get node name and type
+        if isinstance(node_instance, VMSSInstance):
+            node_name = node_instance.vmss_name
+            node_id = node_instance.instance_id
+        else:  # VMInstance
+            node_name = node_instance.vm_name
+            node_id = None
+
         result = {
             "test_name": test["name"],
             "description": test.get("description", ""),
             "command": test["command"],
-            "vmss_name": vmss_instance.vmss_name,
-            "instance_id": vmss_instance.instance_id,
-            "computer_name": vmss_instance.computer_name,
+            "node_name": node_name,
+            "node_id": node_id,
+            "computer_name": node_instance.computer_name,
             "status": "error",
             "stdout": "",
             "stderr": "",
@@ -369,13 +445,19 @@ class ConnectivityTester:
             return result
 
         try:
-            # Execute command via SDK vmss run-command
+            # Execute command via SDK run-command
             run_command_params = RunCommandInput(command_id="RunShellScript", script=[test["command"]])
 
-            # Begin the async operation
-            async_operation = self.compute_client.virtual_machine_scale_set_vms.begin_run_command(
-                mc_rg, vmss_instance.vmss_name, vmss_instance.instance_id, run_command_params
-            )
+            if isinstance(node_instance, VMSSInstance):
+                # VMSS instance - use VMSS run command
+                async_operation = self.compute_client.virtual_machine_scale_set_vms.begin_run_command(
+                    mc_rg, node_instance.vmss_name, node_instance.instance_id, run_command_params
+                )
+            else:
+                # VM instance - use VM run command
+                async_operation = self.compute_client.virtual_machines.begin_run_command(
+                    mc_rg, node_instance.vm_name, run_command_params
+                )
 
             # Wait for completion (with 300 second timeout)
             response = async_operation.result(timeout=300)
@@ -392,6 +474,7 @@ class ConnectivityTester:
                 result["analysis"] = (
                     "Unable to run connectivity test: Insufficient permissions. "
                     "The 'Virtual Machine Contributor' role or "
+                    "'Microsoft.Compute/virtualMachines/runCommand/action' or "
                     "'Microsoft.Compute/virtualMachineScaleSets/virtualmachines/runCommand/action' "
                     "permission is required on the MC_ resource group to execute connectivity tests."
                 )

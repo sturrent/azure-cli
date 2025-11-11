@@ -180,18 +180,17 @@ class ClusterDataCollector:
 
         if not cluster_result or not isinstance(cluster_result, dict):
             raise ValueError(
-                f"Failed to get cluster information for {cluster_name}. "
+                f"Failed to get cluster information for {cluster_name}'. "
                 f"Please check the cluster name and resource group."
             )
 
-        try:
-            # Get agent pools
-            agent_pools_list = list(self.agent_pools_client.list(resource_group, cluster_name))
-            agent_pools = [_to_dict(pool) for pool in agent_pools_list]
+        # Get agent pools from cluster's agent_pool_profiles
+        # This provides the correct 'type' field (VirtualMachines vs VirtualMachineScaleSets)
+        # as opposed to agent_pools_client.list() which returns ARM resource type
+        agent_pools = cluster_result.get("agent_pool_profiles", [])
 
-        except (ResourceNotFoundError, HttpResponseError) as e:
-            self.logger.warning("Failed to retrieve agent pools: %s", e)
-            agent_pools = []
+        if not agent_pools:
+            self.logger.warning("No agent pools found in cluster configuration")
 
         return {"cluster_info": cluster_result, "agent_pools": agent_pools}
 
@@ -304,7 +303,7 @@ class ClusterDataCollector:
         Returns:
             List of VMSS details with network profiles
         """
-        self.logger.info("Analyzing VMSS network configuration...")
+        self.logger.info("Collecting node network configuration (VMSS)...")
 
         mc_rg = cluster_info.get("node_resource_group", "")
         if not mc_rg:
@@ -366,6 +365,129 @@ class ClusterDataCollector:
 
         return vmss_analysis
 
+    def _collect_vm_nic_details(self, network_interfaces: List[Dict[str, Any]], mc_rg: str) -> tuple:
+        """
+        Collect detailed NIC information for a VM.
+
+        Args:
+            network_interfaces: List of NIC references from VM network profile
+            mc_rg: Managed resource group name
+
+        Returns:
+            Tuple of (nic_details_list, unique_subnets)
+        """
+        unique_subnets = set()
+        nic_details_list = []
+
+        for nic in network_interfaces:
+            nic_id = nic.get("id", "")
+            if not nic_id:
+                continue
+
+            # Parse NIC resource ID
+            nic_rg = nic_id.split("/")[4] if len(nic_id.split("/")) > 4 else mc_rg
+            nic_name = nic_id.split("/")[-1]
+
+            try:
+                nic_detail = self.network_client.network_interfaces.get(nic_rg, nic_name)
+                nic_detail_dict = _to_dict(nic_detail)
+                nic_details_list.append(nic_detail_dict)
+
+                # Collect subnets from IP configurations
+                for ip_config in nic_detail.ip_configurations:
+                    if ip_config.subnet:
+                        subnet_name = ip_config.subnet.id.split("/")[-1]
+                        unique_subnets.add(subnet_name)
+            except (ResourceNotFoundError, HttpResponseError) as e:
+                self.logger.warning("Failed to get NIC details for %s: %s", nic_name, e)
+
+        return nic_details_list, unique_subnets
+
+    def collect_vm_info(
+        self, cluster_info: Dict[str, Any], agent_pools: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Collect VM network configuration from the managed resource group.
+
+        For node pools using Virtual Machines (not VMSS), this method collects
+        individual VM details including network interfaces and configurations.
+
+        Args:
+            cluster_info: Cluster configuration dictionary
+            agent_pools: List of agent pool configurations
+
+        Returns:
+            List of VM details with network profiles
+        """
+        # Check if any agent pools use Virtual Machines
+        has_vm_pools = any(
+            pool.get("type") == "VirtualMachines" for pool in agent_pools
+        )
+
+        if not has_vm_pools:
+            # No VM pools, skip silently
+            return []
+
+        self.logger.info("Collecting node network configuration (VMs)...")
+
+        mc_rg = cluster_info.get("node_resource_group", "")
+        if not mc_rg:
+            self.logger.warning("No managed resource group found in cluster info")
+            return []
+
+        try:
+            # List VMs in the managed resource group
+            vm_list = list(self.compute_client.virtual_machines.list(mc_rg))
+        except (ResourceNotFoundError, HttpResponseError) as e:
+            # Check if this is an authorization error
+            if isinstance(e, HttpResponseError):
+                if self._check_authorization_error(e, 'VM', mc_rg, mc_rg):
+                    return []  # Authorization error, finding already created
+            self.logger.warning("Failed to list VMs in %s: %s", mc_rg, e)
+            return []
+
+        vm_analysis = []
+        for vm in vm_list:
+            vm_name = vm.name
+            if not vm_name:
+                continue
+
+            self.logger.info("  - Analyzing VM: %s", vm_name)
+
+            try:
+                # Get VM details
+                vm_detail = self.compute_client.virtual_machines.get(
+                    mc_rg, vm_name, expand='instanceView'
+                )
+                vm_detail_dict = _to_dict(vm_detail)
+
+                # Extract network interfaces and get full NIC details
+                network_profile = vm_detail_dict.get("network_profile", {})
+                network_interfaces = network_profile.get("network_interfaces", [])
+
+                # Collect NIC details using helper method (reduces nesting)
+                nic_details_list, unique_subnets = self._collect_vm_nic_details(
+                    network_interfaces, mc_rg
+                )
+
+                # Log unique subnets
+                for subnet_name in sorted(unique_subnets):
+                    self.logger.info("    Found subnet: %s", subnet_name)
+
+                # Store full NIC details in the VM dict for NSG analysis
+                vm_detail_dict["nic_details"] = nic_details_list
+                vm_analysis.append(vm_detail_dict)
+
+            except (ResourceNotFoundError, HttpResponseError) as e:
+                # Check if this is an authorization error
+                if isinstance(e, HttpResponseError):
+                    if self._check_authorization_error(e, 'VM', vm_name, mc_rg):
+                        continue  # Authorization error, finding already created
+                self.logger.warning("Failed to get details for VM %s: %s", vm_name, e)
+                continue
+
+        return vm_analysis
+
     def collect_all(self, cluster_name: str, resource_group: str) -> Dict[str, Any]:
         """
         Collect all cluster data in one call.
@@ -380,6 +502,7 @@ class ClusterDataCollector:
                 - agent_pools: List of node pool configurations
                 - vnets_analysis: List of VNet details and peerings
                 - vmss_analysis: List of VMSS network configurations
+                - vm_analysis: List of VM network configurations (for VM node pools)
 
         Raises:
             ValueError: If cluster information cannot be retrieved
@@ -395,9 +518,13 @@ class ClusterDataCollector:
         # Collect VMSS information
         vmss_analysis = self.collect_vmss_info(cluster_info)
 
+        # Collect VM information (for Virtual Machines node pools)
+        vm_analysis = self.collect_vm_info(cluster_info, agent_pools)
+
         return {
             "cluster_info": cluster_info,
             "agent_pools": agent_pools,
             "vnets_analysis": vnets_analysis,
             "vmss_analysis": vmss_analysis,
+            "vm_analysis": vm_analysis,
         }
