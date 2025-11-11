@@ -207,6 +207,68 @@ def _enrich_agent_pools_with_vm_subnets(
                 pool["vnet_subnet_id"] = next(iter(vm_subnet_ids))  # Use first one for display
 
 
+def _enrich_agent_pools_with_vmss_subnets(
+    agent_pools: List[Dict[str, Any]],
+    vmss_analysis: List[Dict[str, Any]]
+) -> None:
+    """
+    Enrich agent pool data with subnet information from VMSS network profiles.
+
+    For VMSS node pools, the agent pool profile may not include vnet_subnet_id
+    (especially for overlay networking), so we extract it from the VMSS network profile.
+
+    Args:
+        agent_pools: List of agent pool configurations (modified in place)
+        vmss_analysis: List of VMSS analysis data with network profiles
+    """
+    if not vmss_analysis:
+        return
+
+    # Build a map from VMSS name to subnet IDs
+    vmss_subnet_map = {}
+    for vmss in vmss_analysis:
+        vmss_name = vmss.get("name", "")
+        if not vmss_name:
+            continue
+
+        # Extract subnet IDs from VMSS network profile
+        network_profile = vmss.get("virtual_machine_profile", {}).get("network_profile", {})
+        network_interfaces = network_profile.get("network_interface_configurations", [])
+
+        subnet_ids = set()
+        for nic in network_interfaces:
+            ip_configs = nic.get("ip_configurations", [])
+            for ip_config in ip_configs:
+                subnet = ip_config.get("subnet", {})
+                subnet_id = subnet.get("id")
+                if subnet_id:
+                    subnet_ids.add(subnet_id)
+
+        if subnet_ids:
+            vmss_subnet_map[vmss_name] = subnet_ids
+
+    # Enrich VMSS-type agent pools with subnet information
+    for pool in agent_pools:
+        pool_type = pool.get("type")
+        if pool_type != "VirtualMachines":  # VMSS or VirtualMachineScaleSets
+            # Skip if already has vnet_subnet_id
+            if pool.get("vnet_subnet_id"):
+                continue
+
+            # Match by pool name to VMSS
+            pool_name = pool.get("name", "")
+            # VMSS name pattern: aks-{poolname}-{numbers}-vmss
+            for vmss_name, subnet_ids in vmss_subnet_map.items():
+                if pool_name in vmss_name:
+                    # Found matching VMSS
+                    if len(subnet_ids) == 1:
+                        pool["vnet_subnet_id"] = next(iter(subnet_ids))
+                    elif len(subnet_ids) > 1:
+                        # Multiple subnets - use first one for display
+                        pool["vnet_subnet_id"] = next(iter(subnet_ids))
+                    break
+
+
 def run_diagnostics(  # pylint: disable=too-many-locals
     aks_client,
     agent_pools_client,
@@ -312,6 +374,10 @@ def run_diagnostics(  # pylint: disable=too-many-locals
     # Enrich agent pools with subnet information from actual VMs (for VM node pools)
     if vm_analysis:
         _enrich_agent_pools_with_vm_subnets(agent_pools, vm_analysis)
+
+    # Enrich agent pools with subnet information from VMSS network profiles
+    if vmss_analysis:
+        _enrich_agent_pools_with_vmss_subnets(agent_pools, vmss_analysis)
 
     # Now analyze VNets with enriched agent pool data
     vnets_analysis = collector.collect_vnet_info(agent_pools)
