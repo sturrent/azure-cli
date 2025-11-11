@@ -18,8 +18,8 @@
 | Network Plugin | Status | Notes |
 |---------------|--------|-------|
 | Azure CNI | ✅ | Fully tested |
-| Azure CNI (Overlay) | ✅ | Tested, but pod CIDR NSG rules not checked ❌ |
-| Azure CNI (Pod Subnet) | ✅ | Tested, but Pod CIDR not displayed 📋 |
+| Azure CNI (Overlay) | ✅ | **Fully tested** - NSG rules for pod CIDR validated ✅ |
+| Azure CNI (Pod Subnet) | ✅ | Fully tested with enhanced CNI mode display |
 | Kubenet | ✅ | Fully tested |
 | Azure CNI (Cilium) | ⚠️ | Code should work, not tested |
 | BYO CNI | ❌ | Not tested |
@@ -33,11 +33,11 @@
 | Load Balancer | ✅ | Public IP detection, outbound rules, effective IPs |
 | User Defined Routing (UDR) | ✅ | Route table analysis, next hop validation, UDR conflicts |
 | Managed NAT Gateway (`managedNATGateway`) | ✅ | NAT Gateway detection, public IPs, UDR override detection |
-| User-Assigned NAT Gateway (`userAssignedNATGateway`) | ⚠️ | **NOT Tested** - BYO NAT Gateway, user-managed |
+| User-Assigned NAT Gateway (`userAssignedNATGateway`) | ✅ | **Fully Tested** - BYO NAT Gateway, user-managed ✅ |
 | Network Isolated (`none`) | ❌ | **NOT Tested** - Zero egress, private ACR bootstrap |
 | Network Isolated (`block`) | ❌ | **NOT Tested** - Actively blocks egress (preview) |
 
-**Gaps:** User-assigned NAT Gateway not validated, Network Isolated outbound types not supported
+**Recent Updates:** User-assigned NAT Gateway now fully validated (Phase 1 Task 1.3)
 
 ---
 
@@ -47,11 +47,13 @@
 |--------------|--------|-------|
 | Public Cluster | ✅ | Fully supported |
 | Private Cluster (Standard) | ✅ | Private DNS zone, VNet links validated |
-| Private Cluster (BYO Private DNS Zone) | ❌ | **NOT Tested** - User-provided DNS zone |
-| Private Cluster (API VNet Integration) | ❌ | **NOT Tested** - May generate false findings |
+| Private Cluster (BYO Private DNS Zone) | ✅ | **Fully Tested** - Cross-subscription support ✅ |
+| Private Cluster (API VNet Integration) | ✅ | **Fully Tested** - VNet Integration + NSG validation ✅ |
 | Authorized IP Ranges | ✅ | Detection, conflict analysis, validation |
-| Multiple Node Pools | ✅ | Data collected, display pending 📋 |
+| Multiple Node Pools | ✅ | **Full display in summary and detailed views** ✅ |
 | Single Node Pool | ✅ | Fully supported |
+
+**Recent Updates:** BYO Private DNS Zone now supports cross-subscription (Phase 1 Task 1.5), API Server VNet Integration fully validated (Phase 1 Task 1.4)
 
 ---
 
@@ -72,12 +74,13 @@
 | Infrastructure | Status | Critical Gap? |
 |---------------|--------|--------------|
 | VMSS (Standard) | ✅ | Primary support |
-| Virtual Machines node pools | ❌ | **YES** - New AKS feature |
+| Virtual Machines node pools | ✅ | **Fully Supported** - Complete implementation ✅ |
 | Node Auto-Provisioning (NAP) | ❌ | **YES** - Growing adoption |
 | Virtual Nodes (ACI) | ❌ | Moderate - Limited use |
-| Manual VM Nodes | ❌ | Low - Rare scenario |
 
-**Impact:** Tool completely fails on non-VMSS deployments
+**Recent Updates:** Virtual Machines node pools now fully supported with [VM] marker, subnet CIDR display, NSG/VNet analysis (Phase 1 Task 1.6 + VMSS subnet fix)
+
+**Impact:** Tool now supports both VMSS and VM node pool types, including mixed configurations
 
 ---
 
@@ -87,10 +90,12 @@
 |-----------|--------|---------|
 | Required Outbound Rules | ✅ | MCR, Azure Cloud, DNS, NTP |
 | Required Inbound Rules | ✅ | Inter-node, Load Balancer probes |
-| Azure CNI Overlay Pod CIDR | ❌ | **Pod CIDR traffic rules not checked** |
+| Azure CNI Overlay Pod CIDR | ✅ | **Pod CIDR traffic rules validated** ✅ |
 | Blocking Rule Detection | ✅ | Priority-based analysis |
 | Service Tag Validation | ✅ | Proper service tag semantics |
 | Inter-Node Communication | ✅ | Port 10250, etc. |
+
+**Recent Updates:** Azure CNI Overlay pod CIDR NSG validation now complete (Phase 1 Task 1.1)
 
 ---
 
@@ -174,82 +179,85 @@
 3. ✅ **UDR with Firewall** - Virtual appliance routing
 4. ✅ **NAT Gateway** - Managed NAT Gateway outbound
 5. ✅ **Authorized IP Ranges** - API access restrictions
-6. ✅ **Multiple Node Pools** - Multi-pool clusters
+6. ✅ **Multiple Node Pools** - Multi-pool clusters with full display
 7. ✅ **Hub-Spoke Topology** - Customer VNet with UDR
 8. ✅ **Limited Permissions** - Service principal auth
+9. ✅ **User-Assigned NAT Gateway** - BYO NAT Gateway (Phase 1)
+10. ✅ **BYO Private DNS Zone** - Cross-subscription support (Phase 1)
+11. ✅ **API Server VNet Integration** - VNet Integration + NSG validation (Phase 1)
+12. ✅ **Azure CNI Overlay NSG** - Pod CIDR traffic validation (Phase 1)
+13. ✅ **VM Node Pools** - Virtual Machines node pools support (Phase 1)
+14. ✅ **Mixed VMSS+VM Clusters** - Heterogeneous node pool configurations (Phase 1)
 
 ### Medium Priority Scenarios
 
-9. 📋 **Pod Subnet Display** - Data collected, not shown (Phase 8)
-10. ⚠️ **Cross-Subscription BYO VNet** - Code supports, not tested
+15. ✅ **Enhanced CNI Mode Display** - Clear distinction between overlay/pod subnet/node subnet (Phase 1)
+16. ⚠️ **Cross-Subscription BYO VNet** - Code supports, not tested
 
 ### Gap Scenarios (Not Supported ❌)
 
-11. ❌ **BYO Private DNS Zone** - **High Priority Gap** - NOT tested
-12. ❌ **API Server VNet Integration** - **High Priority Gap** - NOT tested, may have false findings
-13. ❌ **Network Isolated Clusters** - **High Priority Gap** - Outbound type `none`/`block` not supported
-14. ⚠️ **User-Assigned NAT Gateway** - **Low Priority Gap** - BYO NAT Gateway not tested
-15. ⚠️ **AKS LocalDNS** - **Medium Priority Gap** - DNS caching (169.254.10.10/11) not tested
-16. ❌ **Node Auto-Provisioning (NAP)** - **Critical Gap** - Tool fails
-17. ❌ **Virtual Nodes (ACI)** - Growing adoption
-18. ❌ **Virtual Machines node pools** - New AKS feature
-19. ❌ **Azure CNI Overlay Pod CIDR NSG Check** - **Important Gap**
+17. ❌ **Network Isolated Clusters** - **High Priority Gap** - Outbound type `none`/`block` not supported
+18. ❌ **Node Auto-Provisioning (NAP)** - **Critical Gap** - Tool fails
+19. ❌ **Virtual Nodes (ACI)** - Growing adoption
 
 ---
 
 ## Feature Completeness by Category
 
-### Network Analysis: 90% Complete
+### Network Analysis: 95% Complete ✅
 
 - ✅ VNet topology
 - ✅ Subnet analysis
 - ✅ VNet peering
 - ✅ Route tables
-- ✅ NSGs (except Overlay-specific)
-- 📋 Pod CIDR display
+- ✅ NSGs (including Overlay pod CIDR)
+- ✅ Enhanced CNI mode display
+- ✅ Cross-subscription BYO resources
 
-### Cluster Analysis: 85% Complete
+### Cluster Analysis: 90% Complete ✅
 
 - ✅ Cluster info
-- ✅ Agent pools
+- ✅ Agent pools with full display
 - ✅ Network plugin detection
 - ✅ Outbound type
-- 📋 Node pool display details
-- ❌ Non-VMSS support
+- ✅ VM node pools support
+- ✅ Mixed VMSS+VM configurations
+- ❌ Non-VMSS support (NAP/Virtual Nodes)
 
-### Security Analysis: 95% Complete
+### Security Analysis: 98% Complete ✅
 
-- ✅ NSG rules (generic)
+- ✅ NSG rules (generic + overlay-specific)
 - ✅ API access
 - ✅ Authorized IPs
-- ✅ Private clusters
-- ❌ Overlay-specific NSG rules
-- ❌ API Server VNet Integration (not tested)
+- ✅ Private clusters (standard + BYO DNS + VNet Integration)
+- ✅ UDR conflicts
 
-### DNS Analysis: 95% Complete
+### DNS Analysis: 95% Complete ✅
 
 - ✅ DNS configuration
-- ✅ Private DNS zones
+- ✅ Private DNS zones (including BYO cross-subscription)
 - ✅ VNet links
 - ✅ Custom DNS servers
 - ⚠️ LocalDNS feature (not tested)
 
-### Connectivity Analysis: 75% Complete
+### Connectivity Analysis: 80% Complete
 
 - ✅ Active testing (--probe-test)
 - ✅ MCR connectivity
 - ✅ API server connectivity
+- ✅ VM node pool support
 - ❌ NAP/Virtual Nodes support
 - ❌ Custom endpoint testing
 
-### UX & Reporting: 90% Complete
+### UX & Reporting: 95% Complete ✅
 
 - ✅ Summary report
 - ✅ Detailed report
 - ✅ JSON export
 - ✅ Permission handling
-- 📋 Node pool display
-- ❌ Azure CLI standard output formats
+- ✅ Node pool display (summary + detailed)
+- ✅ Enhanced CNI mode descriptions
+- ❌ Azure CLI standard output formats (deferred)
 
 ---
 
@@ -260,42 +268,45 @@
 | Gap | Impact | Effort | Priority |
 |-----|--------|--------|----------|
 | Non-VMSS Support (NAP) | HIGH - Tool fails completely | 8-12h | 🔴 CRITICAL |
-| Azure CNI Overlay NSG | MEDIUM - Missing validation | 2-3h | 🟡 HIGH |
-
-### Important Gaps (Limit Functionality)
-
-| Gap | Impact | Effort | Priority |
-|-----|--------|--------|----------|
-| Network Isolated Clusters | HIGH - Tool fails for `none`/`block` outbound | 12-16h | 🔴 HIGH |
-| Node Pool Display | MEDIUM - Reduced visibility | 2-3h | 🟡 MEDIUM |
-| BYO Private DNS Zone | MEDIUM - Specific scenario | 2h | 🟡 MEDIUM |
-| API VNet Integration | MEDIUM - Specific scenario | 4-6h | 🟡 MEDIUM |
-| Cross-Sub Validation | LOW - Edge case | 2h | 🟢 LOW |
+| Network Isolated Clusters | HIGH - Tool fails for `none`/`block` outbound | 12-16h | � HIGH |
 
 ### Nice-to-Have
 
 | Enhancement | Impact | Effort | Priority |
 |------------|--------|--------|----------|
+| Virtual Nodes (ACI) Support | MEDIUM - Specific deployment pattern | 6-8h | 🟡 MEDIUM |
+| Cross-Sub Validation | LOW - Edge case | 2h | 🟢 LOW |
 | Cilium Validation | LOW - Rare use case | 1-2h | 🔵 FUTURE |
 | Standard Output Formats | LOW - POC acceptable | 6-8h | 🔵 FUTURE |
-| Virtual Machines Node Pools | LOW - New feature, limited adoption | 4-6h | 🔵 FUTURE |
 
 ---
 
 ## Conclusion
 
-**POC Status:** Strong foundation with identified gaps
+**POC Status:** Advanced POC with comprehensive scenario coverage - formal review and additional testing required
+
+**Phase 1 Achievements (Nov 10-11, 2025):**
+
+- ✅ Azure CNI Overlay NSG validation (pod CIDR traffic)
+- ✅ Enhanced CNI mode display (overlay/pod subnet/node subnet)
+- ✅ User-assigned NAT Gateway support
+- ✅ API Server VNet Integration support
+- ✅ BYO Private DNS Zone with cross-subscription
+- ✅ Virtual Machines node pools support
+- ✅ Mixed VMSS+VM cluster configurations
 
 **Strengths:**
-- Core network analysis complete and validated
-- Permission handling robust
-- Performance excellent
-- Output informative
 
-**Work pending:**
-- Need to address the gaps and do extensive testing
-- Non-VMSS support (NAP adoption growing?)
-- Azure CNI Overlay NSG gap (easy fix)
+- Comprehensive network analysis for standard deployments
+- Robust permission handling
+- Excellent performance
+- Clear, actionable output
+- Wide scenario coverage
+
+**Remaining Work:**
+
+- Non-VMSS support (NAP/Virtual Nodes) for modern deployment patterns
+- Network Isolated clusters for zero-trust requirements
 
 ---
 

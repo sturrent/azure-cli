@@ -676,12 +676,16 @@ az aks net-diagnostics -n aks-demo-overlay -g aks-demo-rg \
 ### Expected Output Highlights
 
 **Summary Section:**
+
 ```
 === AKS Network Diagnostics Summary ===
 Cluster: aks-demo-overlay (aks-demo-rg)
 Region: canadacentral
-Network Plugin: azure (overlay mode)
+Network Plugin: azure (overlay)
 Outbound Type: loadBalancer
+
+**Node Pools:**
+- nodepool1 [VMSS] (System, 2 nodes, subnet: 10.0.1.0/24)
 
 **Findings Summary:**
 - [OK] No critical issues detected
@@ -689,7 +693,6 @@ Outbound Type: loadBalancer
 **Network Topology:**
 - VNet: aks-vnet (10.0.0.0/16)
   - Subnet: aks-subnet (10.0.1.0/24)
-    - Node Pool: nodepool1 (2 nodes)
 
 **Outbound Configuration:**
 - Type: loadBalancer
@@ -698,6 +701,7 @@ Outbound Type: loadBalancer
 ```
 
 **Permission Limitation Example:**
+
 ```
 **Permission Limitations:**
 - Incomplete VMSS Analysis - Missing permission to read MC_aks-demo-rg_aks-demo-overlay_canadacentral

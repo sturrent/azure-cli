@@ -199,11 +199,16 @@ az aks net-diagnostics -n <cluster> -g <resource-group> [--details] [--probe-tes
 ## Sample Output Highlights
 
 ### Successful Analysis
+
 ```
 === AKS Network Diagnostics Summary ===
 Cluster: aks-demo-overlay (aks-demo-rg)
-Network Plugin: azure (overlay mode)
+Network Plugin: azure (overlay)
 Outbound Type: loadBalancer
+
+**Node Pools:**
+- nodepool1 [VMSS] (System, 3 nodes, subnet: 10.0.1.0/24)
+- userpool [VMSS] (User, 2 nodes, subnet: 10.0.1.0/24)
 
 **Findings Summary:**
 - [OK] No critical issues detected
@@ -218,6 +223,7 @@ Outbound Type: loadBalancer
 ```
 
 ### With Permission Limitations
+
 ```
 **Findings Summary:**
 - [OK] No critical issues detected in analyzed components
@@ -230,6 +236,7 @@ Outbound Type: loadBalancer
 ```
 
 ### With Findings
+
 ```
 **Findings Summary:**
 - [ERROR] UDR + API Authorized IPs Conflict - Route table may redirect traffic
